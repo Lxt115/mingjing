@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import type { ConversationListItem, Conversation } from '@/types'
 import { apiService } from '@/services'
+import { useMediaQuery } from '@/composables'
 import { FilterChips } from '@/components/ui'
 import { formatTime } from '@/utils'
 
+const { isMobile } = useMediaQuery()
 const filterOptions = ['全部', '笃笃', '故事大王', '今天', '本周']
 const activeFilter = ref('全部')
 const conversations = ref<ConversationListItem[]>([])
 const selectedConvId = ref<string | null>(null)
 const selectedConv = ref<Conversation | null>(null)
 const loadingConv = ref(false)
+const showChatPanel = ref(false)
 
 async function loadConversations() {
   const filter = activeFilter.value
@@ -21,6 +24,9 @@ async function loadConversations() {
 async function selectConversation(id: string) {
   selectedConvId.value = id
   loadingConv.value = true
+  if (isMobile.value) {
+    showChatPanel.value = true
+  }
   try {
     const res = await apiService.history.getConversation(id)
     selectedConv.value = res.data
@@ -29,9 +35,13 @@ async function selectConversation(id: string) {
   }
 }
 
+function closeChatPanel() {
+  showChatPanel.value = false
+}
+
 onMounted(async () => {
   await loadConversations()
-  if (conversations.value.length > 0) {
+  if (!isMobile.value && conversations.value.length > 0) {
     selectConversation(conversations.value[0].id)
   }
 })
@@ -42,7 +52,8 @@ watch(activeFilter, () => {
 </script>
 
 <template>
-  <div class="grid grid-cols-[340px_1fr] gap-5" style="height: calc(100vh - 60px - 48px)">
+  <!-- Desktop Layout -->
+  <div v-if="!isMobile" class="grid grid-cols-[340px_1fr] gap-5" style="height: calc(100vh - 60px - 48px)">
     <div class="bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col overflow-hidden">
       <div class="px-5 pt-4 pb-3 border-b border-[var(--border)] shrink-0">
         <div class="text-[15px] font-extrabold text-[var(--text1)] mb-2.5">对话列表</div>
@@ -107,10 +118,7 @@ watch(activeFilter, () => {
           </div>
         </div>
 
-        <div
-          class="flex-1 overflow-y-auto p-5 flex flex-col gap-3.5 bg-[var(--bg)]"
-          ref="msgContainer"
-        >
+        <div class="flex-1 overflow-y-auto p-5 flex flex-col gap-3.5 bg-[var(--bg)]">
           <div
             v-for="msg in selectedConv.messages"
             :key="msg.id"
@@ -148,4 +156,124 @@ watch(activeFilter, () => {
       </div>
     </div>
   </div>
+
+  <!-- Mobile Layout -->
+  <div v-else class="flex flex-col h-full">
+    <div class="history-filter-mobile flex gap-1.5 px-4 pt-3 pb-4 overflow-x-auto shrink-0">
+      <div
+        v-for="opt in filterOptions"
+        :key="opt"
+        :class="[
+          'py-1.5 px-3.5 rounded-[20px] text-xs font-bold whitespace-nowrap cursor-pointer transition-all duration-200',
+          activeFilter === opt ? 'bg-[var(--coral)] text-white' : 'bg-[var(--surface)] text-[var(--text2)] shadow-[var(--shadow-sm)]',
+        ]"
+        @click="activeFilter = opt"
+      >
+        {{ opt }}
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-4">
+      <template v-for="conv in conversations" :key="conv.id">
+        <div
+          v-if="conv.dateLabel"
+          class="text-xs font-extrabold text-[var(--text3)] tracking-[.6px] uppercase pt-3 pb-1.5"
+        >
+          {{ conv.dateLabel }}
+        </div>
+        <div
+          class="mb-2.5 bg-[var(--surface)] rounded-[var(--radius-md)] py-3.5 px-4 flex items-center gap-3 cursor-pointer shadow-[var(--shadow-sm)] transition-all duration-200 active:scale-[.98] relative overflow-hidden"
+          @click="selectConversation(conv.id)"
+        >
+          <div
+            class="absolute left-0 top-0 bottom-0 w-1"
+            :style="{ background: conv.accentColor }"
+          />
+          <div
+            class="w-[42px] h-[42px] rounded-[14px] flex items-center justify-center text-xl shrink-0"
+            :style="{ background: conv.accentColor === 'var(--teal)' ? '#e8fdf5' : conv.accentColor === 'var(--indigo)' ? '#eef0fc' : conv.accentColor === 'var(--amber)' ? '#fff8e6' : '#fff0f0' }"
+          >
+            {{ conv.agentEmoji }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-extrabold text-[var(--text1)] mb-[3px] whitespace-nowrap overflow-hidden text-ellipsis">{{ conv.title }}</div>
+            <div class="text-xs text-[var(--text3)] whitespace-nowrap overflow-hidden text-ellipsis">{{ conv.preview }}</div>
+          </div>
+          <div class="text-right shrink-0">
+            <div class="text-[11px] text-[var(--text3)] mb-1">{{ conv.time }}</div>
+            <span class="text-[10px] font-extrabold bg-[var(--coral)] text-white rounded-[10px] px-1.5 py-0.5">{{ conv.messageCount }}</span>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <Transition name="slide">
+      <div v-if="showChatPanel" class="fixed inset-0 z-50 bg-[var(--bg)] flex flex-col">
+        <div class="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--border)] bg-white/90 backdrop-blur-[12px] shrink-0">
+          <button
+            class="w-9 h-9 rounded-full bg-[var(--bg2)] border-none flex items-center justify-center text-lg text-[var(--text1)] cursor-pointer shrink-0 transition-all duration-200 active:scale-[.92]"
+            @click="closeChatPanel"
+          >
+            ‹
+          </button>
+          <div v-if="selectedConv">
+            <div class="text-[17px] font-black text-[var(--text1)]">{{ selectedConv.title }}</div>
+            <div class="text-[11px] text-[var(--text3)] font-semibold">{{ selectedConv.meta }}</div>
+          </div>
+        </div>
+
+        <div v-if="selectedConv" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-[var(--bg)]">
+          <div
+            v-for="msg in selectedConv.messages"
+            :key="msg.id"
+            :class="[
+              'flex flex-col max-w-[78%] animate-[msgIn_.25s_ease]',
+              msg.role === 'user' ? 'self-end items-end' : 'self-start items-start',
+            ]"
+          >
+            <div
+              :class="[
+                'py-[11px] px-[14px] rounded-[18px] text-sm leading-[1.55] font-semibold',
+                msg.role === 'user'
+                  ? 'bg-[var(--coral)] text-white rounded-br'
+                  : 'bg-[var(--surface)] text-[var(--text1)] rounded-bl shadow-[var(--shadow-sm)]',
+              ]"
+            >
+              <span v-for="(line, i) in msg.text.split('\n')" :key="i">
+                {{ line }}<br v-if="i < msg.text.split('\n').length - 1" />
+              </span>
+            </div>
+            <div class="text-[10px] text-[var(--text3)] mt-1 px-1">
+              {{ msg.role === 'user' ? '你' : 'AI伙伴' }} · {{ formatTime(msg.timestamp) }}
+            </div>
+          </div>
+        </div>
+
+        <div v-else class="flex-1 flex items-center justify-center text-[var(--text3)] text-sm font-semibold">
+          加载中…
+        </div>
+      </div>
+    </Transition>
+  </div>
 </template>
+
+<style scoped>
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.slide-enter-active,
+.slide-leave-active {
+  transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+}
+.slide-enter-from {
+  transform: translateX(100%);
+}
+.slide-leave-to {
+  transform: translateX(100%);
+}
+</style>

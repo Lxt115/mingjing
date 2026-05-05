@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useMediaQuery } from '@/composables'
+
 defineProps<{
   open: boolean
   size?: 'default' | 'large'
@@ -8,6 +10,8 @@ defineProps<{
 const emit = defineEmits<{
   close: []
 }>()
+
+const { isMobile } = useMediaQuery()
 </script>
 
 <template>
@@ -15,21 +19,32 @@ const emit = defineEmits<{
     <Transition name="overlay">
       <div
         v-if="open"
-        class="fixed inset-0 z-[500] bg-[rgba(26,29,46,.45)] backdrop-blur-[4px] flex items-center justify-center"
+        :class="[
+          'fixed inset-0 z-[500] bg-[rgba(26,29,46,.45)] backdrop-blur-[4px]',
+          isMobile ? 'flex items-end justify-center' : 'flex items-center justify-center',
+        ]"
         @click.self="emit('close')"
       >
-        <Transition name="modal">
+        <Transition :name="isMobile ? 'sheet' : 'modal'">
           <div
             v-if="open"
             :class="[
-              'bg-[var(--surface)] rounded-[var(--radius-xl)] shadow-[var(--shadow-lg)] max-h-[88vh] overflow-y-auto relative',
-              size === 'large' ? 'w-[640px]' : 'w-[480px]',
-              'max-w-[92vw]',
+              'bg-[var(--surface)] shadow-[var(--shadow-lg)] overflow-y-auto relative',
+              isMobile
+                ? 'w-full max-h-[92vh] rounded-t-[var(--radius-xl)] rounded-b-none'
+                : [
+                    'rounded-[var(--radius-xl)] max-h-[88vh]',
+                    size === 'large' ? 'w-[640px]' : 'w-[480px]',
+                    'max-w-[92vw]',
+                  ],
             ]"
           >
             <div
               v-if="title || $slots.header"
-              class="flex items-center justify-between px-7 pt-6 pb-[18px] border-b border-[var(--border)]"
+              :class="[
+                'flex items-center justify-between border-b border-[var(--border)]',
+                isMobile ? 'px-5 pt-4 pb-3.5' : 'px-7 pt-6 pb-[18px]',
+              ]"
             >
               <h3 class="text-lg font-black text-[var(--text1)]">
                 <slot name="header">
@@ -44,16 +59,21 @@ const emit = defineEmits<{
               </button>
             </div>
 
-            <div class="px-7 py-5">
+            <div :class="isMobile ? 'px-4 py-4' : 'px-7 py-5'">
               <slot />
             </div>
 
             <div
               v-if="$slots.footer"
-              class="flex gap-3 px-7 pb-6 pt-0"
+              :class="[
+                'flex gap-3 pt-0',
+                isMobile ? 'px-4 pb-5' : 'px-7 pb-6',
+              ]"
             >
               <slot name="footer" />
             </div>
+
+            <div v-if="isMobile" class="h-4"></div>
           </div>
         </Transition>
       </div>
@@ -79,5 +99,18 @@ const emit = defineEmits<{
 .modal-leave-to {
   opacity: 0;
   transform: scale(0.95) translateY(8px);
+}
+
+.sheet-enter-active {
+  transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.sheet-leave-active {
+  transition: transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.sheet-enter-from {
+  transform: translateY(100%);
+}
+.sheet-leave-to {
+  transform: translateY(100%);
 }
 </style>

@@ -2,13 +2,19 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUiStore } from '@/store'
+import { useMediaQuery } from '@/composables'
 import Button from '@/components/ui/Button.vue'
 
 const route = useRoute()
 const ui = useUiStore()
+const { isMobile } = useMediaQuery()
 
 const pageTitle = computed(() => (route.meta.title as string) ?? '')
 const pageSubtitle = computed(() => (route.meta.subtitle as string) ?? '')
+
+function toggleSidebar() {
+  ui.toggleSidebar()
+}
 
 function openNewAgent() {
   ui.openModal('modal-agent-config', { mode: 'create' })
@@ -29,14 +35,37 @@ function openAddSpeaker() {
 
 <template>
   <header
-    class="h-[60px] bg-[var(--surface)] border-b border-[var(--border)] flex items-center px-7 gap-4 shrink-0"
+    :class="[
+      'flex items-center gap-4 shrink-0 bg-[var(--surface)] border-b border-[var(--border)]',
+      isMobile ? 'h-[48px] px-4' : 'h-[60px] px-7',
+    ]"
   >
-    <div class="flex-1">
-      <h1 class="text-[17px] font-extrabold text-[var(--text1)] leading-tight">{{ pageTitle }}</h1>
-      <p class="text-xs text-[var(--text3)] font-medium mt-px">{{ pageSubtitle }}</p>
+    <button
+      v-if="!isMobile"
+      class="w-9 h-9 rounded-[10px] bg-[var(--bg2)] flex items-center justify-center text-base cursor-pointer border-none shrink-0 transition-all duration-200 hover:bg-[var(--border)]"
+      @click="toggleSidebar"
+    >
+      ☰
+    </button>
+
+    <div class="flex-1 min-w-0">
+      <h1
+        :class="[
+          'font-extrabold text-[var(--text1)] leading-tight',
+          isMobile ? 'text-[15px]' : 'text-[17px]',
+        ]"
+      >
+        {{ pageTitle }}
+      </h1>
+      <p
+        v-if="!isMobile"
+        class="text-xs text-[var(--text3)] font-medium mt-px"
+      >
+        {{ pageSubtitle }}
+      </p>
     </div>
 
-    <div class="flex items-center gap-2.5">
+    <div v-if="!isMobile" class="flex items-center gap-2.5">
       <Button
         v-if="route.path === '/agents'"
         @click="openNewAgent"

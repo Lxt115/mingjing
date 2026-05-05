@@ -268,5 +268,21 @@ initForm()
         </div>
       </div>
     </div>
+
+    <div class="flex gap-3 pt-4 border-t border-[var(--border)] mt-2">
+      <button
+        class="flex-1 h-11 rounded-[var(--radius-sm)] bg-[var(--bg2)] text-[var(--text2)] border-none text-sm font-extrabold cursor-pointer transition-all duration-200 hover:bg-[var(--border)]"
+        @click="close"
+      >
+        取消
+      </button>
+      <button
+        class="flex-1 h-11 rounded-[var(--radius-sm)] bg-[var(--coral)] text-white border-none text-sm font-extrabold cursor-pointer transition-all duration-200 hover:bg-[var(--coral-dk)] disabled:opacity-50 disabled:cursor-not-allowed"
+        :disabled="saving"
+        @click="saveConfig"
+      >
+        {{ saving ? '保存中…' : '保存' }}
+      </button>
+    </div>
   </div>
 </template>

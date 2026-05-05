@@ -31,8 +31,6 @@ const accountNav: NavItemConfig[] = [
   { path: '/profile', label: '我的', icon: '👤' },
 ]
 
-const allNav = computed(() => [...mainNav, ...configNav, ...accountNav])
-
 function isActive(path: string): boolean {
   return route.path === path || route.path.startsWith(path + '/')
 }
