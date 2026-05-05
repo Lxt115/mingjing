@@ -1,0 +1,7 @@
+export { default as AgentConfigModal } from './AgentConfigModal.vue'
+export { default as AddDeviceModal } from './AddDeviceModal.vue'
+export { default as UnbindConfirmModal } from './UnbindConfirmModal.vue'
+export { default as CloneVoiceModal } from './CloneVoiceModal.vue'
+export { default as AddSpeakerModal } from './AddSpeakerModal.vue'
+export { default as KbNewModal } from './KbNewModal.vue'
+export { default as AgentDeviceModal } from './AgentDeviceModal.vue'
