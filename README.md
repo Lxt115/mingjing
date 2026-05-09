@@ -4,9 +4,8 @@
 
 ## 项目简介
 
-「明境」是一个面向 AI 陪伴机器人的管理平台，提供 AI 伙伴（角色）创建与配置、设备管理、声音库、
-知识库、声纹识别等核心功能。本项目是对原有单文件 HTML 原型的完整工程化重构，
-支持后续无缝对接真实后端 API。
+「明境」是一个 AI 陪伴玩偶的后端管理平台，以网页的形式提供 AI 伙伴（角色）创建与配置、设备管理、声音库、
+知识库、声纹识别等核心功能的设置。玩偶芯片采用ESP32，上接麦克风、扬声器、开关、说话按钮（长按说话，松手发送）、电池。无显示屏，防低龄用户沉迷。
 
 ### 核心业务模块
 
@@ -34,26 +33,6 @@
 | 代码规范 | ESLint + Prettier | AirBnb 风格 + 自动修正 |
 | 测试 | Vitest + Vue Test Utils | 单元测试覆盖核心逻辑 |
 | Git Hooks | Husky + lint-staged | 提交前自动 Lint/格式化 |
-
-## 架构决策记录 (ADR)
-
-### ADR-1: 选择 Vue 3 而非 React
-- **理由**：原有 HTML 结构大量使用声明式模板（类名绑定、条件渲染），Vue 的模板语法与原始代码的迁移路径更平滑
-- **代价**：团队需熟悉 Composition API 与 `<script setup>` 语法
-
-### ADR-2: State → Pinia（非 Vuex）
-- **理由**：Pinia 是 Vue 3 官方推荐，类型推导完备，支持模块化拆分，API 更简洁
-- **Store 拆分策略**：按业务域拆分（roles / devices / user / ui），避免单一巨型 Store
-
-### ADR-3: CSS Variables → Tailwind CSS
-- **理由**：原有 CSS 变量体系可直接映射为 Tailwind theme 扩展，同时保留 `variables.css` 作为暗色模式/主题切换的根基
-- **组件样式隔离**：每个组件使用 `<style scoped>`，全局仅保留 Reset 和 CSS Variables
-
-### ADR-4: Mock / Real API 通过环境变量切换
-- **理由**：避免视图层硬编码 Mock 数据，通过 `VITE_USE_MOCK=true/false` 控制 `services/mock.ts` 的注入
-
-### ADR-5: 弹窗统一管理器 useModal()
-- **理由**：原 HTML 有 7 个弹窗且分散管理，统一管理器避免 DOM 层级混乱和内存泄漏
 
 ## 快速开始
 
