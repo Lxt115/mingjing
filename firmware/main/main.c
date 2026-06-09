@@ -9,7 +9,11 @@
 #include "esp_timer.h"
 #include "nvs_flash.h"
 #include "driver/gpio.h"
-#include "mbedtls/base64.h"
+
+#include "esp_opus_enc.h"
+#include "esp_opus_dec.h"
+#include "esp_audio_enc.h"
+#include "esp_audio_dec.h"
 
 #include "wifi.h"
 #include "websocket.h"
@@ -21,11 +25,22 @@
 #define PIN_BTN     9
 #define PIN_LED     2
 
+#define OPUS_FRAME_DURATION_MS 60
+#define OPUS_SAMPLE_RATE       16000
+#define OPUS_FRAME_SAMPLES     (OPUS_SAMPLE_RATE * OPUS_FRAME_DURATION_MS / 1000)
+
 static const char *TAG = "app";
 
 static QueueHandle_t s_playback_queue = NULL;
 static TaskHandle_t s_record_task = NULL;
 static bool s_recording = false;
+
+// Opus 编码器/解码器
+static void *s_opus_enc = NULL;
+static void *s_opus_dec = NULL;
+static int s_enc_frame_size = 0;
+static int s_enc_outbuf_size = 0;
+static int s_dec_frame_size = 0;
 
 typedef struct {
     uint8_t *data;
@@ -47,24 +62,108 @@ static void led_blink(int times) {
     }
 }
 
-static void playback_task(void *arg) {
-    audio_chunk_t chunk;
-
-    while (1) {
-        if (xQueueReceive(s_playback_queue, &chunk, portMAX_DELAY) == pdTRUE) {
-            if (chunk.data == NULL) {
-                /* Stop marker: disable TX to kill DAC idle noise */
-                i2s_playback_stop();
-                continue;
-            }
-            i2s_playback_start();
-            i2s_playback_write(chunk.data, chunk.len);
-            free(chunk.data);
-        }
+static void opus_init(void) {
+    /* ── Encoder: 22050 Hz mono 60ms ── */
+    esp_opus_enc_config_t enc_cfg = {
+        .sample_rate      = OPUS_SAMPLE_RATE,
+        .channel          = ESP_AUDIO_MONO,
+        .bits_per_sample  = ESP_AUDIO_BIT16,
+        .bitrate          = ESP_OPUS_BITRATE_AUTO,
+        .frame_duration   = ESP_OPUS_ENC_FRAME_DURATION_60_MS,
+        .application_mode = ESP_OPUS_ENC_APPLICATION_VOIP,
+        .complexity       = 0,
+        .enable_fec       = false,
+        .enable_dtx       = true,
+        .enable_vbr       = true,
+    };
+    esp_err_t ret = esp_opus_enc_open(&enc_cfg, sizeof(enc_cfg), &s_opus_enc);
+    if (s_opus_enc && ret == ESP_AUDIO_ERR_OK) {
+        esp_opus_enc_get_frame_size(s_opus_enc, &s_enc_frame_size, &s_enc_outbuf_size);
+        s_enc_frame_size /= sizeof(int16_t);
+        ESP_LOGI(TAG, "Opus enc ready: frame=%d samples outbuf=%d", s_enc_frame_size, s_enc_outbuf_size);
+    } else {
+        ESP_LOGE(TAG, "Opus enc init failed: %d", ret);
     }
 
+    /* ── Decoder: 22050 Hz mono 60ms ── */
+    esp_opus_dec_cfg_t dec_cfg = {
+        .sample_rate    = OPUS_SAMPLE_RATE,
+        .channel        = ESP_AUDIO_MONO,
+        .frame_duration = ESP_OPUS_DEC_FRAME_DURATION_60_MS,
+        .self_delimited = false,
+    };
+    ret = esp_opus_dec_open(&dec_cfg, sizeof(dec_cfg), &s_opus_dec);
+    if (s_opus_dec && ret == ESP_AUDIO_ERR_OK) {
+        s_dec_frame_size = OPUS_FRAME_SAMPLES;
+        ESP_LOGI(TAG, "Opus dec ready: frame=%d samples", s_dec_frame_size);
+    } else {
+        ESP_LOGE(TAG, "Opus dec init failed: %d", ret);
+    }
+}
+
+/* ── Playback: receive binary Opus → decode → I2S ── */
+
+static void on_websocket_binary(const uint8_t *data, int len) {
+    if (!s_opus_dec || len == 0) return;
+
+    /* Decode Opus → PCM */
+    int16_t *pcm = malloc(s_dec_frame_size * sizeof(int16_t));
+    if (!pcm) return;
+
+    esp_audio_dec_in_raw_t raw = {
+        .buffer = (uint8_t *)data,
+        .len = (uint32_t)len,
+        .consumed = 0,
+        .frame_recover = ESP_AUDIO_DEC_RECOVERY_NONE,
+    };
+    esp_audio_dec_out_frame_t out_frame = {
+        .buffer = (uint8_t *)pcm,
+        .len = (uint32_t)(s_dec_frame_size * sizeof(int16_t)),
+        .decoded_size = 0,
+    };
+    esp_audio_dec_info_t dec_info = {};
+    esp_err_t ret = esp_opus_dec_decode(s_opus_dec, &raw, &out_frame, &dec_info);
+
+    if (ret == ESP_AUDIO_ERR_OK && out_frame.decoded_size > 0) {
+        audio_chunk_t chunk = {
+            .data = (uint8_t *)pcm,
+            .len = (int)out_frame.decoded_size,
+        };
+        if (xQueueSend(s_playback_queue, &chunk, pdMS_TO_TICKS(500)) != pdTRUE) {
+            free(pcm);
+        }
+    } else {
+        free(pcm);
+    }
+}
+
+static void playback_task(void *arg) {
+    audio_chunk_t chunk;
+    bool started = false;
+
+    while (1) {
+        if (xQueueReceive(s_playback_queue, &chunk, portMAX_DELAY) != pdTRUE)
+            continue;
+
+        if (chunk.data == NULL) {
+            if (started) {
+                i2s_playback_stop();
+                started = false;
+            }
+            continue;
+        }
+
+        if (!started) {
+            i2s_playback_start();
+            started = true;
+        }
+        i2s_playback_write(chunk.data, chunk.len);
+        free(chunk.data);
+    }
     vTaskDelete(NULL);
 }
+
+/* ── 控制消息 (JSON text frames) ── */
 
 static void on_websocket_text(const char *text, int len) {
     static proto_msg_t msg;
@@ -72,25 +171,14 @@ static void on_websocket_text(const char *text, int len) {
     if (!proto_parse(text, len, &msg)) return;
 
     switch (msg.type) {
-    case PROTO_MSG_AUDIO_CHUNK: {
-        if (msg.content_len > 0) {
-            size_t decoded_len = 0;
-            mbedtls_base64_decode(NULL, 0, &decoded_len,
-                                  (const unsigned char *)msg.content, msg.content_len);
-            uint8_t *decoded = malloc(decoded_len);
-            if (decoded && mbedtls_base64_decode(decoded, decoded_len, &decoded_len,
-                                                  (const unsigned char *)msg.content,
-                                                  msg.content_len) == 0) {
-                audio_chunk_t chunk = { .data = decoded, .len = (int)decoded_len };
-                if (xQueueSend(s_playback_queue, &chunk, 0) != pdTRUE) {
-                    free(decoded);
-                }
-            } else {
-                free(decoded);
-            }
-        }
+    case PROTO_MSG_WELCOME:
+        ESP_LOGI(TAG, "server welcome");
         break;
-    }
+    case PROTO_MSG_TRANSCRIPT:
+        ESP_LOGI(TAG, "transcript: %s", msg.text);
+        break;
+    case PROTO_MSG_TEXT_CHUNK:
+        break;
     case PROTO_MSG_AUDIO_DONE: {
         audio_chunk_t stop = { .data = NULL, .len = 0 };
         xQueueSend(s_playback_queue, &stop, 0);
@@ -104,59 +192,65 @@ static void on_websocket_text(const char *text, int len) {
     }
 }
 
+/* ── Record: I2S → Opus encode → binary send ── */
+
 static void record_task(void *arg) {
     TickType_t last_wake = xTaskGetTickCount();
-    int mono_samples = DEVICE_AUDIO_CHUNK_BYTES / sizeof(int16_t);
-    /* I2S is stereo, read 2x buffer then extract left channel */
-    int16_t *rx_buf = malloc(mono_samples * sizeof(int16_t) * 2);
-    size_t b64_buf_size = (DEVICE_AUDIO_CHUNK_BYTES * 4 / 3) + 4;
-    uint8_t *b64_buf = malloc(b64_buf_size);
-    char *json_buf = malloc(PROTO_BUF_SIZE);
+    int16_t *rx_buf = malloc(s_enc_frame_size * sizeof(int16_t));
+    uint8_t *opus_buf = malloc(s_enc_outbuf_size);
 
-    if (!rx_buf || !b64_buf || !json_buf) {
+    if (!rx_buf || !opus_buf) {
         ESP_LOGE(TAG, "record_task: malloc failed");
-        free(rx_buf); free(b64_buf); free(json_buf);
+        free(rx_buf); free(opus_buf);
         vTaskDelete(NULL);
         return;
     }
 
-    proto_build_audio_start(json_buf, PROTO_BUF_SIZE);
+    /* Notify server: recording starts */
+    char json_buf[256];
+    proto_build_audio_start(json_buf, sizeof(json_buf));
     websocket_send_text(json_buf, strlen(json_buf));
 
-    /* Tell playback to stop */
+    /* Stop playback if any */
     {
         audio_chunk_t stop = { .data = NULL, .len = 0 };
         xQueueSend(s_playback_queue, &stop, 0);
     }
     i2s_record_start();
 
-    int chunk_count = 0;
-    int total_read = 0;
-    int i2s_slots = mono_samples * 2;  /* stereo: read 2x slots */
+    int frame_count = 0;
+    int total_samples = 0;
     while (s_recording) {
-        int read = i2s_record_read(rx_buf, i2s_slots);
-        if (read >= i2s_slots) {
-            /* Extract left channel from stereo interleaved (L,R,L,R,...) */
-            for (int i = 0; i < mono_samples; i++) {
-                rx_buf[i] = rx_buf[i * 2];
+        int read = i2s_record_read(rx_buf, s_enc_frame_size);
+        if (read >= s_enc_frame_size) {
+            /* Opus encode */
+            esp_audio_enc_in_frame_t in = {
+                .buffer = (uint8_t *)rx_buf,
+                .len = (uint32_t)(s_enc_frame_size * sizeof(int16_t)),
+            };
+            esp_audio_enc_out_frame_t out = {
+                .buffer = opus_buf,
+                .len = (uint32_t)s_enc_outbuf_size,
+                .encoded_bytes = 0,
+            };
+            esp_err_t ret = esp_opus_enc_process(s_opus_enc, &in, &out);
+            if (ret == ESP_AUDIO_ERR_OK && out.encoded_bytes > 0) {
+                websocket_send_binary(opus_buf, out.encoded_bytes);
+                frame_count++;
+                total_samples += s_enc_frame_size;
             }
-            chunk_count++;
-            total_read += mono_samples;
-            size_t olen = 0;
-            mbedtls_base64_encode(b64_buf, b64_buf_size, &olen,
-                                  (const unsigned char *)rx_buf, mono_samples * sizeof(int16_t));
-            int json_len = proto_build_audio_chunk(json_buf, PROTO_BUF_SIZE, b64_buf, olen);
-            websocket_send_text(json_buf, json_len);
         }
-        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(DEVICE_AUDIO_CHUNK_MS));
+        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(OPUS_FRAME_DURATION_MS));
     }
 
     i2s_record_stop();
-    ESP_LOGI(TAG, "record done: chunks=%d total_samples=%d", chunk_count, total_read);
-    proto_build_audio_end(json_buf, PROTO_BUF_SIZE);
+    int duration_ms = (total_samples * 1000) / OPUS_SAMPLE_RATE;
+    ESP_LOGI(TAG, "record done: frames=%d samples=%d duration=%dms", frame_count, total_samples, duration_ms);
+
+    proto_build_audio_end(json_buf, sizeof(json_buf));
     websocket_send_text(json_buf, strlen(json_buf));
 
-    free(rx_buf); free(b64_buf); free(json_buf);
+    free(rx_buf); free(opus_buf);
     s_record_task = NULL;
     vTaskDelete(NULL);
 }
@@ -179,7 +273,7 @@ static void app_main_task(void *arg) {
 
     ESP_LOGI(TAG, "Wi-Fi connected, starting WS → %s", ws_url);
 
-    websocket_init(ws_url, on_websocket_text);
+    websocket_init(ws_url, on_websocket_text, on_websocket_binary);
 
     led_blink(3);
 
@@ -189,31 +283,29 @@ static void app_main_task(void *arg) {
     led_blink(1);
     ESP_LOGI(TAG, "WebSocket connected");
 
-    bool stable = true;   /* debounced stable state (true = not pressed) */
+    bool stable = true;
     int  debounce = 0;
 
     while (1) {
         bool raw = gpio_get_level(PIN_BTN);
 
-        /* ── software debounce: state must be stable for 4 consecutive reads (80ms) ── */
         if (raw == stable) {
             debounce = 0;
         } else {
             debounce++;
             if (debounce >= 4) {
-                /* Edge detected */
                 if (stable && !raw) {
-                    /* Falling edge: button pressed */
+                    /* Button pressed */
                     if (!s_recording) {
                         s_recording = true;
                         i2s_playback_stop();
                         xQueueReset(s_playback_queue);
-                        xTaskCreatePinnedToCore(record_task, "record", 8192, NULL, 5,
+                        xTaskCreatePinnedToCore(record_task, "record", 32768, NULL, 5,
                                                 &s_record_task, tskNO_AFFINITY);
                         ESP_LOGI(TAG, "recording started");
                     }
                 } else if (!stable && raw) {
-                    /* Rising edge: button released */
+                    /* Button released */
                     if (s_recording) {
                         s_recording = false;
                         ESP_LOGI(TAG, "recording stopped, waiting for response");
@@ -239,7 +331,9 @@ void app_main(void) {
     led_init();
     btn_init();
 
-    s_playback_queue = xQueueCreate(32, sizeof(audio_chunk_t));
+    opus_init();
+
+    s_playback_queue = xQueueCreate(128, sizeof(audio_chunk_t));
     xTaskCreatePinnedToCore(playback_task, "playback", 6144, NULL, 4, NULL, tskNO_AFFINITY);
 
     wifi_init_sta();

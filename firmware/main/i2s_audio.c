@@ -5,6 +5,7 @@
 #include "driver/i2c_master.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "esp_efuse_table.h"
 #include "esp_codec_dev.h"
 #include "esp_codec_dev_defaults.h"
 #include "es8311_codec.h"
@@ -20,8 +21,6 @@ static const audio_codec_if_t *s_codec_if = NULL;
 static esp_codec_dev_handle_t  s_codec_dev = NULL;
 
 static bool s_playing    = false;
-static bool s_rx_enabled = false;
-static bool s_tx_enabled = false;
 
 void audio_init(int bck_io, int ws_io, int din_io, int dout_io) {
     /* ── 1. I2C master bus ── */
@@ -35,29 +34,61 @@ void audio_init(int bck_io, int ws_io, int din_io, int dout_io) {
     };
     ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_cfg, &s_i2c_bus));
 
-    /* ── 2. PA pin (NS4150) ── */
+    /* ── 2. PA pin (NS4150) — VDD_SPI reconfigured as GPIO ── */
+    esp_efuse_write_field_bit(ESP_EFUSE_VDD_SPI_AS_GPIO);
     gpio_reset_pin(PA_EN_PIN);
     gpio_set_direction(PA_EN_PIN, GPIO_MODE_OUTPUT);
     gpio_set_level(PA_EN_PIN, 0);
 
-    /* ── 3. I2S duplex channels ── */
-    i2s_chan_config_t chan_cfg = I2S_CHANNEL_DEFAULT_CONFIG(I2S_NUM_0, I2S_ROLE_MASTER);
+    /* ── 3. I2S duplex channels (aligned with xiaozhi Es8311AudioCodec::CreateDuplexChannels) ── */
+    i2s_chan_config_t chan_cfg = {
+        .id = I2S_NUM_0,
+        .role = I2S_ROLE_MASTER,
+        .dma_desc_num = 6,
+        .dma_frame_num = 240,
+        .auto_clear_after_cb = true,
+        .auto_clear_before_cb = false,
+        .intr_priority = 0,
+    };
     i2s_std_config_t std_cfg = {
-        .clk_cfg  = I2S_STD_CLK_DEFAULT_CONFIG(DEVICE_AUDIO_SAMPLE_RATE),
-        .slot_cfg = I2S_STD_PHILIPS_SLOT_DEFAULT_CONFIG(I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO),
+        .clk_cfg = {
+            .sample_rate_hz = DEVICE_AUDIO_SAMPLE_RATE,
+            .clk_src = I2S_CLK_SRC_DEFAULT,
+            .mclk_multiple = I2S_MCLK_MULTIPLE_256,
+        },
+        .slot_cfg = {
+            .data_bit_width = I2S_DATA_BIT_WIDTH_16BIT,
+            .slot_bit_width = I2S_SLOT_BIT_WIDTH_AUTO,
+            .slot_mode = I2S_SLOT_MODE_STEREO,
+            .slot_mask = I2S_STD_SLOT_BOTH,
+            .ws_width = I2S_DATA_BIT_WIDTH_16BIT,
+            .ws_pol = false,
+            .bit_shift = true,
+            .left_align = true,
+            .big_endian = false,
+            .bit_order_lsb = false,
+        },
         .gpio_cfg = {
             .mclk = I2S_MCLK,
             .bclk = bck_io, .ws = ws_io,
             .dout = dout_io, .din = din_io,
+            .invert_flags = {
+                .mclk_inv = false,
+                .bclk_inv = false,
+                .ws_inv = false,
+            },
         },
     };
     ESP_ERROR_CHECK(i2s_new_channel(&chan_cfg, &s_tx_chan, &s_rx_chan));
     ESP_ERROR_CHECK(i2s_channel_init_std_mode(s_tx_chan, &std_cfg));
     ESP_ERROR_CHECK(i2s_channel_init_std_mode(s_rx_chan, &std_cfg));
+    /* Enable both now — ES8311 needs I2S clock for ADC/DAC */
+    ESP_ERROR_CHECK(i2s_channel_enable(s_tx_chan));
+    ESP_ERROR_CHECK(i2s_channel_enable(s_rx_chan));
 
-    /* ── 4. I2S data interface — only RX, TX left free for manual write ── */
+    /* ── 4. Interfaces ── */
     audio_codec_i2s_cfg_t i2s_cfg = {
-        .port = I2S_NUM_0, .rx_handle = s_rx_chan, .tx_handle = NULL,
+        .port = I2S_NUM_0, .rx_handle = s_rx_chan, .tx_handle = s_tx_chan,
     };
     const audio_codec_data_if_t *data_if = audio_codec_new_i2s_data(&i2s_cfg);
 
@@ -71,7 +102,7 @@ void audio_init(int bck_io, int ws_io, int din_io, int dout_io) {
     es8311_codec_cfg_t es8311_cfg = {
         .ctrl_if = ctrl_if, .gpio_if = gpio_if,
         .codec_mode = ESP_CODEC_DEV_WORK_MODE_BOTH,
-        .pa_pin     = PA_EN_PIN,
+        .pa_pin     = GPIO_NUM_NC,    /* don't let codec touch PA — we control it */
         .pa_reverted = false,
         .master_mode = false,
         .use_mclk   = true,
@@ -83,7 +114,7 @@ void audio_init(int bck_io, int ws_io, int din_io, int dout_io) {
     s_codec_if = es8311_codec_new(&es8311_cfg);
     if (!s_codec_if) { ESP_LOGE(TAG, "ES8311 init failed!"); return; }
 
-    /* ── 6. esp_codec_dev: activates ADC/DAC (required for recording) ── */
+    /* ── 6. esp_codec_dev (IN_OUT) — activates ADC + DAC paths ── */
     esp_codec_dev_cfg_t dev_cfg = {
         .dev_type = ESP_CODEC_DEV_TYPE_IN_OUT,
         .codec_if = s_codec_if, .data_if = data_if,
@@ -93,17 +124,14 @@ void audio_init(int bck_io, int ws_io, int din_io, int dout_io) {
 
     esp_codec_dev_sample_info_t fs = {
         .bits_per_sample = 16,
-        .channel         = 2,
+        .channel         = 1,
         .channel_mask    = 0,
         .sample_rate     = DEVICE_AUDIO_SAMPLE_RATE,
         .mclk_multiple   = 0,
     };
     ESP_ERROR_CHECK(esp_codec_dev_open(s_codec_dev, &fs));
     esp_codec_dev_set_in_gain(s_codec_dev, 30.0f);
-
-    /* Channels are now enabled by data_if via esp_codec_dev_open */
-    s_tx_enabled = true;
-    s_rx_enabled = true;
+    esp_codec_dev_set_out_vol(s_codec_dev, 70);
 
     ESP_LOGI(TAG, "ES8311+I2S ready, SR=%d", DEVICE_AUDIO_SAMPLE_RATE);
 }
@@ -117,7 +145,7 @@ void audio_deinit(void) {
     if (s_i2c_bus)   { i2c_del_master_bus(s_i2c_bus); s_i2c_bus = NULL; }
 }
 
-/* ── Record: uses raw i2s_channel_read (proven to work with this setup) ── */
+/* ── Record: esp_codec_dev_read (compatible with xiaozhi pattern) ── */
 
 void i2s_record_start(void) {
     if (s_codec_if && s_codec_if->mute) s_codec_if->mute(s_codec_if, true);
@@ -128,25 +156,18 @@ void i2s_record_stop(void) {
 }
 
 int i2s_record_read(int16_t *buf, int samples) {
-    if (!s_rx_chan) return 0;
-    size_t bytes_read = 0;
-    esp_err_t ret = i2s_channel_read(s_rx_chan, buf, samples * sizeof(int16_t),
-                                     &bytes_read, pdMS_TO_TICKS(100));
-    if (ret == ESP_OK) {
-        return (int)(bytes_read / sizeof(int16_t));
+    if (!s_codec_dev) return 0;
+    esp_err_t ret = esp_codec_dev_read(s_codec_dev, buf, samples * sizeof(int16_t));
+    if (ret == ESP_CODEC_DEV_OK) {
+        return samples;
     }
     return 0;
 }
 
-/* ── Playback: uses esp_codec_dev_write (goes through data_if to avoid conflict) ── */
+/* ── Playback: esp_codec_dev_write (via data_if to I2S TX → ES8311 DAC → NS4150 → speaker) ── */
 
 void i2s_playback_start(void) {
     if (s_playing) return;
-    /* Enable TX channel first, then unmute DAC, then PA */
-    if (s_tx_chan && !s_tx_enabled) {
-        i2s_channel_enable(s_tx_chan);
-        s_tx_enabled = true;
-    }
     if (s_codec_if && s_codec_if->mute) s_codec_if->mute(s_codec_if, false);
     gpio_set_level(PA_EN_PIN, 1);
     s_playing = true;
@@ -156,17 +177,13 @@ void i2s_playback_start(void) {
 void i2s_playback_stop(void) {
     if (!s_playing) return;
     gpio_set_level(PA_EN_PIN, 0);
-    if (!s_rx_enabled && s_tx_chan && s_tx_enabled) {
-        i2s_channel_disable(s_tx_chan);
-        s_tx_enabled = false;
-    }
+    if (s_codec_if && s_codec_if->mute) s_codec_if->mute(s_codec_if, true);
     s_playing = false;
     ESP_LOGI(TAG, "playback off");
 }
 
 int i2s_playback_write(const uint8_t *data, int len) {
-    if (!s_tx_chan || !s_playing) return 0;
-    size_t bytes_written = 0;
-    i2s_channel_write(s_tx_chan, data, len, &bytes_written, pdMS_TO_TICKS(200));
-    return (int)bytes_written;
+    if (!s_codec_dev || !s_playing) return 0;
+    /* esp_codec_dev_write → data_if → I2S TX → ES8311 DACDAT → DAC → analog out → NS4150 → speaker */
+    return esp_codec_dev_write(s_codec_dev, (void *)data, len);
 }

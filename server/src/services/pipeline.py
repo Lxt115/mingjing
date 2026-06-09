@@ -210,6 +210,8 @@ async def speech_pipeline_stream(
     voice_name = _pick_voice_name(agent)
     tts = get_tts()
     audio_error = ""
+    total_tts_bytes = 0
+    total_tts_chunks = 0
     try:
         async for chunk in tts.synthesize_streaming(
             text=full_text,
@@ -218,7 +220,10 @@ async def speech_pipeline_stream(
             volume=agent.volume,
             pitch=agent.pitch,
         ):
+            total_tts_bytes += len(chunk)
+            total_tts_chunks += 1
             yield {"type": "audio_chunk", "content": base64.b64encode(chunk).decode()}
+        print(f"[DEBUG] TTS stream: {total_tts_chunks} chunks, {total_tts_bytes} bytes, ~{total_tts_bytes//44}ms")
     except Exception as e:
         audio_error = str(e)
 

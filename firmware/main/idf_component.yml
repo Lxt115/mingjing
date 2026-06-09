@@ -3,3 +3,5 @@ dependencies:
     version: "^1.0"
   espressif/esp_codec_dev:
     version: "^1.5"
+  espressif/esp_audio_codec:
+    version: "~2.4.1"

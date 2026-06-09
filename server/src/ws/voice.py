@@ -1,10 +1,17 @@
 import json
-import base64
+import asyncio
+from opuslib_next import Encoder, Decoder
+from opuslib_next import constants
 from fastapi import WebSocket, WebSocketDisconnect
 
 from src.ws.manager import manager
 from src.database import async_session_factory
 from src.services import pipeline
+
+# 与固件 OPUS_SAMPLE_RATE / OPUS_FRAME_DURATION_MS 保持一致
+OPUS_SAMPLE_RATE = 16000
+OPUS_CHANNELS = 1
+OPUS_FRAME_SAMPLES = OPUS_SAMPLE_RATE * 60 // 1000  # 960 samples per 60ms frame
 
 
 async def handle_voice(ws: WebSocket, agent_id: str):
@@ -18,54 +25,75 @@ async def handle_voice(ws: WebSocket, agent_id: str):
     conn = await manager.connect(ws, agent_uuid)
     await manager.send_json(ws, {"type": "welcome", "agent_id": str(agent_uuid)})
 
+    is_recording = False
+    opus_chunks = []  # raw Opus bytes from device
+
     try:
-        async for raw in ws.iter_text():
+        while True:
+            raw = await ws.receive()
+
+            if raw["type"] == "websocket.disconnect":
+                break
+
+            # ── Binary frame: Opus audio from device ──
+            if "bytes" in raw and raw["bytes"] is not None:
+                if is_recording:
+                    opus_chunks.append(raw["bytes"])
+                continue
+
+            # ── Text frame: JSON control message ──
+            if "text" not in raw:
+                continue
+
             try:
-                msg = json.loads(raw)
+                msg = json.loads(raw["text"])
             except json.JSONDecodeError:
                 continue
 
             msg_type = msg.get("type", "")
 
             if msg_type == "audio_start":
-                conn.is_recording = True
-                conn.audio_chunks.clear()
+                is_recording = True
+                opus_chunks.clear()
                 await manager.send_json(ws, {"type": "status", "message": "recording"})
 
-            elif msg_type == "audio_chunk":
-                raw_data = msg.get("data", "")
-                if raw_data and conn.is_recording:
-                    conn.audio_chunks.append(raw_data)
-                    if not hasattr(conn, '_chunk_count'):
-                        conn._chunk_count = 0
-                    conn._chunk_count += 1
-
             elif msg_type == "audio_end":
-                chunk_count = getattr(conn, '_chunk_count', 0)
-                print(f"[DEBUG] audio_end: received {chunk_count} chunks")
-                conn._chunk_count = 0
-                conn.is_recording = False
-                if not conn.audio_chunks:
+                is_recording = False
+                if not opus_chunks:
                     await manager.send_json(ws, {"type": "status", "message": "no audio"})
                     continue
 
-                audio_bytes = b"".join(base64.b64decode(c) for c in conn.audio_chunks)
-                conn.audio_chunks.clear()
+                # Decode each Opus frame → PCM (each chunk is one 60ms frame)
+                decoder = Decoder(OPUS_SAMPLE_RATE, OPUS_CHANNELS)
+                pcm_parts = []
+                frame_count = len(opus_chunks)
+                for chunk in opus_chunks:
+                    try:
+                        decoded = decoder.decode(chunk, OPUS_FRAME_SAMPLES)
+                        pcm_parts.append(decoded)
+                    except Exception:
+                        pass
+                opus_chunks.clear()
 
-                import os, time, subprocess
-                os.makedirs("debug_audio", exist_ok=True)
-                ts = time.strftime("%H%M%S")
-                pcm_path = f"debug_audio/audio_{ts}.pcm"
-                with open(pcm_path, "wb") as f:
-                    f.write(audio_bytes)
-                wav_path = f"debug_audio/audio_{ts}.wav"
-                subprocess.run([
-                    "ffmpeg", "-y", "-f", "s16le", "-ar", "16000", "-ac", "1",
-                    "-i", pcm_path, wav_path
-                ], capture_output=True)
-                print(f"[DEBUG] Saved: {pcm_path} ({len(audio_bytes)} bytes) -> {wav_path}")
+                audio_bytes = b"".join(pcm_parts)
+                total_ms = len(audio_bytes) // 2 * 1000 // OPUS_SAMPLE_RATE
+                print(f"[DEBUG] Opus decode: {frame_count} frames → {len(audio_bytes)} bytes PCM (~{total_ms}ms)")
+
+                if not audio_bytes:
+                    await manager.send_json(ws, {"type": "error", "message": "Opus decode failed"})
+                    continue
 
                 await manager.send_json(ws, {"type": "status", "message": "recognizing"})
+
+                # xiaozhi pattern: APPLICATION_AUDIO, bitrate=24000, complexity=10, SIGNAL_VOICE
+                encoder = Encoder(OPUS_SAMPLE_RATE, OPUS_CHANNELS, constants.APPLICATION_AUDIO)
+                encoder.bitrate = 24000
+                encoder.complexity = 10
+                encoder.signal = constants.SIGNAL_VOICE
+
+                # 缓冲区：存放跨 chunk 未对齐的 PCM 剩余数据，避免尾部截断
+                frame_size = OPUS_FRAME_SAMPLES * 2  # 1920 bytes per 60ms frame
+                pcm_buffer = bytearray()
 
                 async with async_session_factory() as db:
                     try:
@@ -94,63 +122,35 @@ async def handle_voice(ws: WebSocket, agent_id: str):
                                 break
 
                             elif event_type == "audio_chunk":
-                                await manager.send_json(ws, {
-                                    "type": "audio_chunk",
-                                    "content": event["content"],
-                                })
+                                # event["content"] is base64-encoded PCM from TTS
+                                import base64 as b64
+                                pcm_bytes = b64.b64decode(event["content"])
+
+                                # 追加到缓冲区，积累成完整帧再编码
+                                pcm_buffer.extend(pcm_bytes)
+                                while len(pcm_buffer) >= frame_size:
+                                    pcm_frame = bytes(pcm_buffer[:frame_size])
+                                    del pcm_buffer[:frame_size]
+                                    try:
+                                        opus_frame = encoder.encode(pcm_frame, OPUS_FRAME_SAMPLES)
+                                        if opus_frame:
+                                            await ws.send_bytes(opus_frame)
+                                            # 速率控制：每帧60ms，匹配ESP32 I2S播放时钟
+                                            await asyncio.sleep(0.06)
+                                    except Exception:
+                                        pass
 
                             elif event_type == "audio_done":
-                                conn.conversation_id = uuid_mod.UUID(event["conversation_id"])
-                                await manager.send_json(ws, {
-                                    "type": "audio_done",
-                                    "audioFormat": event["audio_format"],
-                                    "audioError": event.get("audio_error", ""),
-                                    "conversationId": event["conversation_id"],
-                                })
+                                # 刷新缓冲区尾部：用静音补齐最后一个不完整帧
+                                if len(pcm_buffer) > 0:
+                                    padded = bytes(pcm_buffer) + b'\x00' * (frame_size - len(pcm_buffer))
+                                    try:
+                                        opus_frame = encoder.encode(padded, OPUS_FRAME_SAMPLES)
+                                        if opus_frame:
+                                            await ws.send_bytes(opus_frame)
+                                    except Exception:
+                                        pass
 
-                            elif event_type == "done":
-                                pass
-
-                    except Exception as e:
-                        await manager.send_json(ws, {"type": "error", "message": str(e)})
-
-            elif msg_type == "ping":
-                await manager.send_json(ws, {"type": "pong"})
-
-            elif msg_type == "text_chat":
-                text = msg.get("text", "").strip()
-                if not text:
-                    continue
-
-                await manager.send_json(ws, {"type": "status", "message": "thinking"})
-
-                async with async_session_factory() as db:
-                    try:
-                        async for event in pipeline.chat_pipeline_stream(
-                            db, text, agent_uuid, conn.conversation_id,
-                        ):
-                            event_type = event["type"]
-
-                            if event_type == "text_chunk":
-                                await manager.send_json(ws, {
-                                    "type": "text_chunk",
-                                    "content": event["content"],
-                                })
-
-                            elif event_type == "error":
-                                await manager.send_json(ws, {
-                                    "type": "error",
-                                    "message": event["message"],
-                                })
-                                break
-
-                            elif event_type == "audio_chunk":
-                                await manager.send_json(ws, {
-                                    "type": "audio_chunk",
-                                    "content": event["content"],
-                                })
-
-                            elif event_type == "audio_done":
                                 conn.conversation_id = uuid_mod.UUID(event["conversation_id"])
                                 await manager.send_json(ws, {
                                     "type": "audio_done",
@@ -167,7 +167,7 @@ async def handle_voice(ws: WebSocket, agent_id: str):
 
     except WebSocketDisconnect:
         pass
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[voice] error: {e}")
     finally:
         manager.disconnect(ws)

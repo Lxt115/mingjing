@@ -65,7 +65,7 @@ async def synthesize_speech_streaming(
         synthesizer = SpeechSynthesizer(
             model="cosyvoice-v3-flash",
             voice=voice_name,
-            format=AudioFormat.PCM_22050HZ_MONO_16BIT,
+            format=AudioFormat.PCM_16000HZ_MONO_16BIT,
             speech_rate=speed,
             volume=int(volume * 50),
             pitch_rate=pitch,
