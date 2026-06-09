@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>🧸 设备101模拟器</title>
+    <style>
+      :root {
+        --coral: #ff6b6b;
+        --coral-lt: #ff8e8e;
+        --teal: #00c9a7;
+        --indigo: #5c6bc0;
+        --amber: #ffb830;
+        --surface: #1a1d2e;
+        --surface2: #252840;
+        --bg: #131522;
+        --text1: #f0f2f8;
+        --text2: #a0a8b5;
+        --text3: #6b7280;
+        --border: #2d3048;
+        --ring-color: rgba(255, 107, 107, 0.35);
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: 'DM Sans', 'Noto Sans SC', sans-serif;
+        background: var(--bg);
+        color: var(--text1);
+        height: 100dvh;
+        overflow: hidden;
+        -webkit-tap-highlight-color: transparent;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      .app {
+        display: flex;
+        flex-direction: column;
+        height: 100dvh;
+        max-width: 480px;
+        margin: 0 auto;
+      }
+
+      .header {
+        text-align: center;
+        padding: 20px 16px 8px;
+        flex-shrink: 0;
+      }
+      .header-label {
+        font-size: 10px;
+        font-weight: 800;
+        color: var(--text3);
+        letter-spacing: 1.2px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+      }
+      .header-title {
+        font-size: 20px;
+        font-weight: 900;
+        color: var(--text1);
+      }
+      .header-sub {
+        font-size: 11px;
+        color: var(--text3);
+        margin-top: 2px;
+      }
+
+      .agent-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 6px 16px;
+        flex-shrink: 0;
+      }
+      .agent-select {
+        background: var(--surface2);
+        color: var(--text1);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        outline: none;
+      }
+      .agent-select:focus {
+        border-color: var(--coral);
+      }
+
+      .connection-bar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 4px 16px;
+        flex-shrink: 0;
+      }
+      .conn-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--text3);
+        transition: background 0.3s;
+      }
+      .conn-dot.connected {
+        background: var(--teal);
+        box-shadow: 0 0 8px rgba(0, 201, 167, 0.5);
+      }
+      .conn-dot.error {
+        background: var(--amber);
+      }
+      .conn-text {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--text3);
+      }
+
+      .transcript-area {
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px 16px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .transcript-area:empty::after {
+        content: '按住下方按钮开始对话…';
+        color: var(--text3);
+        font-size: 13px;
+        font-weight: 600;
+        text-align: center;
+        margin: auto;
+        opacity: 0.6;
+      }
+
+      .msg {
+        max-width: 85%;
+        animation: msgIn 0.3s ease;
+      }
+      .msg.user {
+        align-self: flex-end;
+        text-align: right;
+      }
+      .msg.bot {
+        align-self: flex-start;
+      }
+      .msg-label {
+        font-size: 10px;
+        font-weight: 800;
+        color: var(--text3);
+        margin-bottom: 3px;
+        letter-spacing: 0.4px;
+      }
+      .msg-bubble {
+        padding: 11px 14px;
+        border-radius: 16px;
+        font-size: 14px;
+        line-height: 1.5;
+        font-weight: 600;
+        white-space: pre-wrap;
+      }
+      .msg.user .msg-bubble {
+        background: linear-gradient(135deg, var(--coral), #ff8e53);
+        color: #fff;
+        border-bottom-right-radius: 6px;
+      }
+      .msg.bot .msg-bubble {
+        background: var(--surface2);
+        color: var(--text1);
+        border-bottom-left-radius: 6px;
+        border: 1px solid var(--border);
+      }
+      .msg.status-msg {
+        align-self: center;
+        max-width: 100%;
+        text-align: center;
+      }
+      .msg.status-msg .msg-bubble {
+        background: transparent;
+        border: none;
+        color: var(--text3);
+        font-size: 12px;
+        padding: 4px 8px;
+      }
+      .msg.transcript-msg {
+        align-self: center;
+        max-width: 100%;
+        text-align: center;
+      }
+      .msg.transcript-msg .msg-bubble {
+        background: rgba(255, 107, 107, 0.1);
+        border: 1px solid rgba(255, 107, 107, 0.2);
+        color: var(--coral-lt);
+        font-size: 12px;
+        padding: 6px 12px;
+      }
+
+      .chat-input-row {
+        display: flex;
+        gap: 8px;
+        padding: 8px 16px 0;
+        flex-shrink: 0;
+      }
+      .chat-input {
+        flex: 1;
+        background: var(--surface2);
+        color: var(--text1);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 14px;
+        font-size: 14px;
+        font-weight: 600;
+        outline: none;
+        font-family: inherit;
+      }
+      .chat-input:focus {
+        border-color: var(--coral);
+      }
+      .chat-send {
+        background: var(--coral);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        padding: 0 18px;
+        font-size: 14px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      .chat-send:active {
+        opacity: 0.8;
+      }
+
+      .controls {
+        flex-shrink: 0;
+        padding: 12px 16px 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .btn-hold {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        border: 3px solid var(--border);
+        background: var(--surface2);
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        position: relative;
+        outline: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .btn-hold::after {
+        content: '';
+        position: absolute;
+        inset: -8px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        transition: all 0.3s;
+      }
+      .btn-hold:active,
+      .btn-hold.pressed {
+        background: var(--coral);
+        border-color: var(--coral);
+        transform: scale(1.08);
+        box-shadow: 0 0 40px var(--ring-color);
+      }
+      .btn-hold:active::after,
+      .btn-hold.pressed::after {
+        border-color: var(--ring-color);
+        inset: -16px;
+        animation: ringPulse 1s ease infinite;
+      }
+      .btn-hold.processing {
+        background: var(--amber);
+        border-color: var(--amber);
+        pointer-events: none;
+      }
+      .btn-label {
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--text3);
+        letter-spacing: 0.5px;
+      }
+
+      .waveform {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        height: 24px;
+      }
+      .waveform .bar {
+        width: 3px;
+        border-radius: 2px;
+        background: var(--coral);
+        transition: height 0.08s ease;
+      }
+
+      @keyframes msgIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes ringPulse {
+        0%,
+        100% {
+          opacity: 0.6;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      @media (max-width: 400px) {
+        .btn-hold {
+          width: 88px;
+          height: 88px;
+          font-size: 28px;
+        }
+        .header-title {
+          font-size: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="header">
+        <div class="header-label">SIMULATOR v3.0</div>
+        <div class="header-title">🧸 设备101</div>
+        <div class="header-sub">按住说话 · 松开发送 · 或打字聊天</div>
+      </div>
+
+      <div class="agent-bar">
+        <span style="font-size: 11px; color: var(--text3)">伙伴：</span>
+        <select class="agent-select" id="agentSelect"></select>
+      </div>
+
+      <div class="connection-bar">
+        <div class="conn-dot" id="connDot"></div>
+        <span class="conn-text" id="connText">检测服务端…</span>
+      </div>
+
+      <div class="transcript-area" id="transcript"></div>
+
+      <div class="chat-input-row">
+        <input class="chat-input" id="chatInput" placeholder="输入文字消息…" autocomplete="off" />
+        <button class="chat-send" id="chatSend">发送</button>
+      </div>
+
+      <div class="controls">
+        <div class="waveform" id="waveform">
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+          <div class="bar"></div>
+        </div>
+        <button class="btn-hold" id="btnHold">🎤</button>
+        <div class="btn-label">按住说话 · 松开发送</div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = 'http://localhost:8000/api'
+      const WS_BASE = 'ws://localhost:8000/ws/voice'
+      const transcriptEl = document.getElementById('transcript')
+      const btnHold = document.getElementById('btnHold')
+      const waveformEl = document.getElementById('waveform')
+      const connDot = document.getElementById('connDot')
+      const connText = document.getElementById('connText')
+      const agentSelect = document.getElementById('agentSelect')
+      const chatInput = document.getElementById('chatInput')
+      const chatSend = document.getElementById('chatSend')
+      const bars = waveformEl.querySelectorAll('.bar')
+
+      let ws = null
+      let mediaRecorder = null
+      let isRecording = false
+      let isProcessing = false
+      function releaseHold() {
+        if (isProcessing) {
+          isProcessing = false
+          btnHold.classList.remove('processing')
+        }
+      }
+      let waveTimer = null
+      let reconnectTimer = null
+      let agents = []
+      let wasConnected = false
+      let currentConversationId = null
+      let currentStreamEl = null
+      let currentAudio = null
+      let audioCtx = null
+      let nextPlayTime = 0
+      let chunkCount = 0
+      let audioInterrupted = false
+      const PCM_SAMPLE_RATE = 22050
+      let recognition = null
+
+      // ---------- WebSocket ----------
+      function connectWS() {
+        const agentId = getAgentId()
+        if (!agentId) {
+          setTimeout(connectWS, 2000)
+          return
+        }
+
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING))
+          return
+
+        try {
+          ws = new WebSocket(WS_BASE + '/' + agentId)
+        } catch {
+          scheduleReconnect()
+          return
+        }
+
+        ws.onopen = () => {
+          setConnected(true)
+          if (!wasConnected) {
+            wasConnected = true
+            addStatus('🟢 WebSocket 已连接')
+          }
+          if (reconnectTimer) {
+            clearTimeout(reconnectTimer)
+            reconnectTimer = null
+          }
+        }
+
+        ws.onmessage = (e) => {
+          const msg = JSON.parse(e.data)
+          switch (msg.type) {
+            case 'status':
+              handleWSStatus(msg.message)
+              break
+            case 'transcript':
+              removeLastStatus()
+              addTranscript(msg.text)
+              audioInterrupted = false
+              releaseHold()
+              break
+            case 'text_chunk':
+              removeLastStatus()
+              appendTextChunk(msg.content)
+              audioInterrupted = false
+              releaseHold()
+              break
+            case 'response':
+              if (msg.text) {
+                removeLastStatus()
+                currentStreamEl = null
+                addMessage('bot', msg.text)
+              }
+              if (msg.conversationId) currentConversationId = msg.conversationId
+              if (msg.audio && msg.audio.length > 10) {
+                playAudioResponse({
+                  audio: msg.audio,
+                  audioFormat: msg.audioFormat || 'mp3',
+                  text: msg.text || '',
+                  audioError: msg.audioError || '',
+                })
+              } else if (msg.text) {
+                fallbackTTS(msg.text)
+              }
+              releaseHold()
+              break
+            case 'audio_chunk':
+              appendAudioChunk(msg.content)
+              break
+            case 'audio_done':
+              finishStreamingAudio(msg)
+              releaseHold()
+              break
+            case 'error':
+              removeLastStatus()
+              addStatus('❌ ' + msg.message)
+              releaseHold()
+              break
+            case 'pong':
+              break
+          }
+        }
+
+        ws.onclose = () => {
+          setConnected(false)
+          releaseHold()
+          scheduleReconnect()
+        }
+
+        ws.onerror = () => {
+          ws?.close()
+        }
+      }
+
+      function handleWSStatus(status) {
+        switch (status) {
+          case 'recording':
+            break
+          case 'recognizing':
+            removeLastStatus()
+            addStatus('🎧 识别语音中…')
+            break
+          case 'thinking':
+            removeLastStatus()
+            addStatus('🤖 AI 思考中…')
+            break
+          default:
+            break
+        }
+      }
+
+      function scheduleReconnect() {
+        setConnected(false)
+        if (reconnectTimer) return
+        reconnectTimer = setTimeout(() => {
+          reconnectTimer = null
+          connectWS()
+        }, 2000)
+      }
+
+      function setConnected(v) {
+        connDot.className = 'conn-dot ' + (v ? 'connected' : '')
+        connText.textContent = v ? 'WS 已连接' : 'WS 未连接 · 重试中…'
+      }
+
+      function reconnect() {
+        if (ws) {
+          ws.close()
+          ws = null
+        }
+        currentConversationId = null
+        currentStreamEl = null
+        connectWS()
+      }
+
+      agentSelect.addEventListener('change', () => {
+        addStatus('🔄 切换伙伴…')
+        reconnect()
+      })
+
+      // ---------- HTTP 加载 Agents ----------
+      async function loadAgents() {
+        try {
+          const r = await fetch(API_BASE + '/agents')
+          const data = await r.json()
+          agents = data.data || []
+          agentSelect.innerHTML = agents
+            .map((a) => `<option value="${a.id}">${a.emoji} ${a.name}</option>`)
+            .join('')
+        } catch {
+          setTimeout(loadAgents, 3000)
+        }
+      }
+
+      function getAgentId() {
+        return agentSelect.value || agents[0]?.id || ''
+      }
+
+      // ---------- 文字聊天 (HTTP) ----------
+      async function sendText() {
+        const text = chatInput.value.trim()
+        if (!text || isProcessing) return
+        const agentId = getAgentId()
+        if (!agentId) {
+          addStatus('⚠️ 请先选择一个伙伴')
+          return
+        }
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          addStatus('⚠️ WebSocket 未连接，请稍后重试')
+          return
+        }
+
+        if (currentAudio) {
+          currentAudio.pause()
+          currentAudio = null
+        }
+        resetStreamingAudio()
+
+        isProcessing = true
+        chatInput.value = ''
+        addMessage('user', text)
+        currentStreamEl = null
+        addStatus('⏳ AI 思考中…')
+        btnHold.classList.add('processing')
+
+        ws.send(JSON.stringify({ type: 'text_chat', text }))
+      }
+
+      chatSend.addEventListener('click', sendText)
+      chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          sendText()
+        }
+      })
+
+      // ---------- 录音 (WebSocket 实时流) ----------
+      let audioChunks = []
+
+      async function startRecording() {
+        if (isProcessing) {
+          addStatus('⚠️ 正在处理上一条消息，请稍后…')
+          return
+        }
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          addStatus('⚠️ WebSocket 未连接，请稍后重试')
+          return
+        }
+
+        if (currentAudio) {
+          currentAudio.pause()
+          currentAudio = null
+        }
+        resetStreamingAudio()
+
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm;codecs=opus' })
+          isRecording = true
+          audioChunks = []
+
+          ws.send(JSON.stringify({ type: 'audio_start' }))
+          currentStreamEl = null
+
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              audioChunks.push(e.data)
+            }
+          }
+
+          mediaRecorder.start()
+          startWaveAnimation()
+        } catch (err) {
+          addStatus('⚠️ 无法访问麦克风：' + (err.message || '请检查权限'))
+        }
+      }
+
+      function stopRecording() {
+        if (!mediaRecorder || !isRecording) return
+        isRecording = false
+        isProcessing = true
+        btnHold.classList.add('processing')
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(audioChunks, { type: 'audio/webm' })
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            const base64 = reader.result.split(',')[1]
+            if (ws?.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'audio_end', data: base64 }))
+            } else {
+              releaseHold()
+              removeLastStatus()
+              addStatus('⚠️ 连接已断开')
+            }
+          }
+          reader.readAsDataURL(blob)
+          audioChunks = []
+        }
+
+        mediaRecorder.stop()
+        mediaRecorder.stream.getTracks().forEach((t) => t.stop())
+        stopWaveAnimation()
+        addStatus('⏳ 处理中…')
+      }
+
+      // ---------- 音频播放 ----------
+      function playAudioResponse(d) {
+        if (d.audio && d.audio.length > 10) {
+          try {
+            const binary = atob(d.audio)
+            const bytes = new Uint8Array(binary.length)
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+            const blob = new Blob([bytes], { type: 'audio/mp3' })
+            const url = URL.createObjectURL(blob)
+            const audio = new Audio(url)
+            currentAudio = audio
+            audio.onended = () => {
+              URL.revokeObjectURL(url)
+              currentAudio = null
+            }
+            audio.play().catch(() => {
+              currentAudio = null
+            })
+          } catch {
+            currentAudio = null
+          }
+        } else if (d.text) {
+          fallbackTTS(d.text)
+        }
+      }
+
+      function fallbackTTS(text) {
+        if (!window.speechSynthesis) return
+        window.speechSynthesis.cancel()
+        const u = new SpeechSynthesisUtterance(text)
+        u.lang = 'zh-CN'
+        u.rate = 1.05
+        u.pitch = 1.05
+        window.speechSynthesis.speak(u)
+      }
+
+      function base64ToBytes(base64) {
+        const binary = atob(base64)
+        const bytes = new Uint8Array(binary.length)
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+        return bytes
+      }
+
+      function appendAudioChunk(base64Data) {
+        if (audioInterrupted) return
+        const bytes = base64ToBytes(base64Data)
+        if (!audioCtx) {
+          resetStreamingAudio()
+          audioInterrupted = false
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+          if (currentAudio) { currentAudio.pause(); currentAudio = null }
+          nextPlayTime = audioCtx.currentTime + 0.08
+          chunkCount = 0
+        }
+        if (audioCtx.state === 'suspended') audioCtx.resume()
+        const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+        const numSamples = bytes.byteLength / 2
+        const float32 = new Float32Array(numSamples)
+        for (let i = 0; i < numSamples; i++) float32[i] = view.getInt16(i * 2, true) / 32768
+        const buffer = audioCtx.createBuffer(1, float32.length, PCM_SAMPLE_RATE)
+        buffer.getChannelData(0).set(float32)
+        const source = audioCtx.createBufferSource()
+        source.buffer = buffer
+        source.connect(audioCtx.destination)
+        chunkCount++
+        const RECALIBRATE_EVERY = 6
+        if (chunkCount % RECALIBRATE_EVERY === 0) {
+          const now = audioCtx.currentTime
+          if (nextPlayTime < now - 0.002) {
+            nextPlayTime = now + 0.005
+          }
+        }
+        if (nextPlayTime < audioCtx.currentTime) nextPlayTime = audioCtx.currentTime
+        source.start(nextPlayTime)
+        nextPlayTime += buffer.duration
+      }
+
+      function finishStreamingAudio(msg) {
+        if (msg.conversationId) currentConversationId = msg.conversationId
+        if (msg.audioError) console.warn('TTS error:', msg.audioError)
+      }
+
+      function resetStreamingAudio() {
+        audioInterrupted = true
+        if (audioCtx) {
+          try {
+            const ctx = audioCtx
+            audioCtx = null
+            ctx.suspend().then(() => { try { ctx.close() } catch {} }).catch(() => { try { ctx.close() } catch {} })
+          } catch {}
+        }
+        nextPlayTime = 0
+        chunkCount = 0
+      }
+
+      // ---------- 波形动画 ----------
+      function startWaveAnimation() {
+        waveTimer = setInterval(() => {
+          bars.forEach((b) => {
+            b.style.height = Math.random() * 18 + 4 + 'px'
+          })
+        }, 80)
+      }
+
+      function stopWaveAnimation() {
+        if (waveTimer) {
+          clearInterval(waveTimer)
+          waveTimer = null
+        }
+        bars.forEach((b) => {
+          b.style.height = '4px'
+        })
+      }
+
+      // ---------- 消息渲染 ----------
+      function addMessage(role, text) {
+        const div = document.createElement('div')
+        div.className = 'msg ' + role
+        div.innerHTML =
+          '<div class="msg-label">' +
+          (role === 'user' ? '🎤 你说' : '🤖 AI伙伴') +
+          '</div>' +
+          '<div class="msg-bubble">' +
+          escapeHtml(text) +
+          '</div>'
+        transcriptEl.appendChild(div)
+        transcriptEl.scrollTop = transcriptEl.scrollHeight
+        return div
+      }
+
+      function appendTextChunk(text) {
+        if (currentStreamEl) {
+          const bubble = currentStreamEl.querySelector('.msg-bubble')
+          if (bubble) {
+            bubble.textContent += text
+            transcriptEl.scrollTop = transcriptEl.scrollHeight
+            return
+          }
+        }
+        currentStreamEl = addMessage('bot', text)
+      }
+
+      function addTranscript(text) {
+        const div = document.createElement('div')
+        div.className = 'msg transcript-msg'
+        div.innerHTML = '<div class="msg-bubble">📝 识别：' + escapeHtml(text) + '</div>'
+        transcriptEl.appendChild(div)
+        transcriptEl.scrollTop = transcriptEl.scrollHeight
+      }
+
+      function addStatus(text) {
+        const div = document.createElement('div')
+        div.className = 'msg status-msg'
+        div.innerHTML = '<div class="msg-bubble">' + escapeHtml(text) + '</div>'
+        transcriptEl.appendChild(div)
+        transcriptEl.scrollTop = transcriptEl.scrollHeight
+      }
+
+      function removeLastStatus() {
+        const statuses = transcriptEl.querySelectorAll('.status-msg')
+        if (statuses.length > 0) statuses[statuses.length - 1].remove()
+      }
+
+      function escapeHtml(s) {
+        const d = document.createElement('div')
+        d.textContent = s
+        return d.innerHTML
+      }
+
+      // ---------- 按钮事件 ----------
+      btnHold.addEventListener('pointerdown', (e) => {
+        e.preventDefault()
+        btnHold.classList.add('pressed')
+        btnHold.textContent = '⏺️'
+        startRecording()
+      })
+
+      btnHold.addEventListener('pointerup', (e) => {
+        e.preventDefault()
+        btnHold.classList.remove('pressed')
+        btnHold.textContent = '🎤'
+        stopRecording()
+      })
+
+      btnHold.addEventListener('pointerleave', (e) => {
+        if (isRecording) {
+          btnHold.classList.remove('pressed')
+          btnHold.textContent = '🎤'
+          stopRecording()
+        }
+      })
+
+      document.addEventListener('keydown', (e) => {
+        if (
+          e.code === 'Space' &&
+          !isRecording &&
+          !isProcessing &&
+          document.activeElement === document.body
+        ) {
+          e.preventDefault()
+          btnHold.classList.add('pressed')
+          btnHold.textContent = '⏺️'
+          startRecording()
+        }
+      })
+
+      document.addEventListener('keyup', (e) => {
+        if (e.code === 'Space' && isRecording) {
+          e.preventDefault()
+          btnHold.classList.remove('pressed')
+          btnHold.textContent = '🎤'
+          stopRecording()
+        }
+      })
+
+      // ---------- 启动 ----------
+      stopWaveAnimation()
+      loadAgents()
+      setTimeout(connectWS, 1000)
+    </script>
+  </body>
+</html>

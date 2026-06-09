@@ -4,6 +4,7 @@ import type {
   Device,
   Voice,
   KnowledgeBase,
+  KnowledgeDetail,
   VoiceprintSpeaker,
   ConversationListItem,
   Conversation,
@@ -41,7 +42,7 @@ export interface DevicesApi {
   bind(code: string, agentId?: string): Promise<ApiResponse<Device>>
   unbind(id: string): Promise<ApiResponse<null>>
   upgradeFirmware(id: string): Promise<ApiResponse<Device>>
-  assignRole(id: string, agentId: string): Promise<ApiResponse<Device>>
+  assignRole(id: string, agentId: string | null): Promise<ApiResponse<Device>>
 }
 
 export interface VoicesApi {
@@ -50,11 +51,18 @@ export interface VoicesApi {
   selectVoice(id: string): Promise<ApiResponse<null>>
 }
 
+export interface VoiceLibraryApi {
+  getList(): Promise<ApiResponse<Voice[]>>
+}
+
 export interface KnowledgeApi {
   getList(): Promise<ApiResponse<KnowledgeBase[]>>
+  getDetail(id: string): Promise<ApiResponse<KnowledgeDetail>>
   toggleKnowledge(id: string, enabled: boolean): Promise<ApiResponse<null>>
   toggleMemory(enabled: boolean): Promise<ApiResponse<null>>
   upload(file: File, name: string): Promise<ApiResponse<KnowledgeBase>>
+  delete(id: string): Promise<ApiResponse<null>>
+  deleteContent(id: string, index: number): Promise<ApiResponse<null>>
 }
 
 export interface VoiceprintApi {
@@ -78,6 +86,7 @@ export interface ApiService {
   agents: AgentsApi
   devices: DevicesApi
   voices: VoicesApi
+  voiceLibrary: VoiceLibraryApi
   knowledge: KnowledgeApi
   voiceprint: VoiceprintApi
   history: HistoryApi

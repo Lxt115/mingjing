@@ -4,6 +4,7 @@ import type {
   Device,
   Voice,
   KnowledgeBase,
+  KnowledgeDetail,
   VoiceprintSpeaker,
   ConversationListItem,
   Conversation,
@@ -16,7 +17,7 @@ function ok<T>(data: T): ApiResponse<T> {
   return { code: 0, message: 'ok', data, timestamp: Date.now() }
 }
 
-let agents: Agent[] = [
+const agents: Agent[] = [
   {
     id: 'agent-1',
     name: '笃笃',
@@ -24,8 +25,7 @@ let agents: Agent[] = [
     style: {
       gradient: 'linear-gradient(135deg, var(--coral), #FF8E53)',
     },
-    description:
-      '活泼可爱的学习小伙伴，专注数学和英语启蒙，适合6-12岁小朋友',
+    description: '活泼可爱的学习小伙伴，专注数学和英语启蒙，适合6-12岁小朋友',
     tags: [
       { icon: '🧮', label: '数学' },
       { icon: '🌍', label: '英语' },
@@ -50,8 +50,7 @@ let agents: Agent[] = [
     style: {
       gradient: 'linear-gradient(135deg, #a78bfa, #7c3aed)',
     },
-    description:
-      '睡前故事专家，用温柔声音陪伴入眠，包含经典童话与自创故事',
+    description: '睡前故事专家，用温柔声音陪伴入眠，包含经典童话与自创故事',
     tags: [
       { icon: '🌙', label: '睡前故事' },
       { icon: '🐾', label: '动物世界' },
@@ -106,6 +105,9 @@ const devices: Device[] = [
     autoUpgrade: true,
     boundAgentId: 'agent-1',
     boundAgentName: '笃笃',
+    emoji: '🤖',
+    assignedRole: '数学老师',
+    hasOTA: true,
   },
   {
     id: 'dev-2',
@@ -118,6 +120,9 @@ const devices: Device[] = [
     autoUpgrade: false,
     boundAgentId: 'agent-1',
     boundAgentName: '笃笃',
+    emoji: '🎯',
+    assignedRole: 'AI伙伴',
+    hasOTA: false,
   },
 ]
 
@@ -130,8 +135,10 @@ const voices: Voice[] = [
     language: '中文',
     gender: 'female',
     isCloned: false,
-    isSelected: true,
+    selected: true,
     gradient: 'linear-gradient(135deg, #f093fb, #f5576c)',
+    emoji: '🎀',
+    style: { gradient: 'linear-gradient(135deg, #f093fb, #f5576c)' },
     category: 'female',
   },
   {
@@ -142,8 +149,10 @@ const voices: Voice[] = [
     language: '中文',
     gender: 'female',
     isCloned: false,
-    isSelected: false,
+    selected: false,
     gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)',
+    emoji: '🌸',
+    style: { gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)' },
     category: 'female',
   },
   {
@@ -154,8 +163,10 @@ const voices: Voice[] = [
     language: '中文',
     gender: 'female',
     isCloned: false,
-    isSelected: false,
+    selected: false,
     gradient: 'linear-gradient(135deg, #a1c4fd, #c2e9fb)',
+    emoji: '📚',
+    style: { gradient: 'linear-gradient(135deg, #a1c4fd, #c2e9fb)' },
     category: 'female',
   },
   {
@@ -166,8 +177,10 @@ const voices: Voice[] = [
     language: '中文',
     gender: 'female',
     isCloned: false,
-    isSelected: false,
+    selected: false,
     gradient: 'linear-gradient(135deg, #fddb92, #d1fdff)',
+    emoji: '🌟',
+    style: { gradient: 'linear-gradient(135deg, #fddb92, #d1fdff)' },
     category: 'female',
   },
   {
@@ -178,8 +191,10 @@ const voices: Voice[] = [
     language: '中文',
     gender: 'male',
     isCloned: false,
-    isSelected: false,
+    selected: false,
     gradient: 'linear-gradient(135deg, #0fd850, #f9f047)',
+    emoji: '☀️',
+    style: { gradient: 'linear-gradient(135deg, #0fd850, #f9f047)' },
     category: 'male',
   },
   {
@@ -190,8 +205,10 @@ const voices: Voice[] = [
     language: '中文',
     gender: 'male',
     isCloned: false,
-    isSelected: false,
+    selected: false,
     gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)',
+    emoji: '🔬',
+    style: { gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)' },
     category: 'male',
   },
   {
@@ -202,8 +219,10 @@ const voices: Voice[] = [
     language: '中文',
     gender: 'male',
     isCloned: false,
-    isSelected: false,
+    selected: false,
     gradient: 'linear-gradient(135deg, #43e97b, #38f9d7)',
+    emoji: '😄',
+    style: { gradient: 'linear-gradient(135deg, #43e97b, #38f9d7)' },
     category: 'male',
   },
   {
@@ -214,8 +233,10 @@ const voices: Voice[] = [
     language: '英语',
     gender: 'female',
     isCloned: false,
-    isSelected: false,
+    selected: false,
     gradient: 'linear-gradient(135deg, #667eea, #764ba2)',
+    emoji: '🇺🇸',
+    style: { gradient: 'linear-gradient(135deg, #667eea, #764ba2)' },
     category: 'english',
   },
   {
@@ -226,8 +247,10 @@ const voices: Voice[] = [
     language: '英语',
     gender: 'male',
     isCloned: false,
-    isSelected: false,
+    selected: false,
     gradient: 'linear-gradient(135deg, #764ba2, #667eea)',
+    emoji: '🇬🇧',
+    style: { gradient: 'linear-gradient(135deg, #764ba2, #667eea)' },
     category: 'english',
   },
   {
@@ -238,8 +261,10 @@ const voices: Voice[] = [
     language: '日语',
     gender: 'female',
     isCloned: false,
-    isSelected: false,
+    selected: false,
     gradient: 'linear-gradient(135deg, #f7797d, #FBD786)',
+    emoji: '🌸',
+    style: { gradient: 'linear-gradient(135deg, #f7797d, #FBD786)' },
     category: 'japanese',
   },
   {
@@ -250,8 +275,10 @@ const voices: Voice[] = [
     language: '韩语',
     gender: 'female',
     isCloned: false,
-    isSelected: false,
+    selected: false,
     gradient: 'linear-gradient(135deg, #11998e, #38ef7d)',
+    emoji: '🇰🇷',
+    style: { gradient: 'linear-gradient(135deg, #11998e, #38ef7d)' },
     category: 'korean',
   },
 ]
@@ -320,12 +347,20 @@ const speakers: VoiceprintSpeaker[] = [
     name: '小婷',
     registeredAt: '2026-04-01',
     sampleCount: 3,
+    gradient: 'linear-gradient(135deg, #f093fb, #f5576c)',
+    emoji: '👩',
+    verified: true,
+    description: '已注册 3 个样本',
   },
   {
     id: 'vp-2',
     name: '小明',
     registeredAt: '2026-04-02',
     sampleCount: 2,
+    gradient: 'linear-gradient(135deg, #4facfe, #00f2fe)',
+    emoji: '👦',
+    verified: false,
+    description: '已注册 2 个样本',
   },
 ]
 
@@ -344,7 +379,7 @@ const conversationList: ConversationListItem[] = [
   {
     id: 'conv-english',
     title: '英语启蒙 · 动物单词',
-    preview: "Cat的发音是/kæt/…",
+    preview: 'Cat的发音是/kæt/…',
     agentName: '笃笃',
     agentEmoji: '🌍',
     accentColor: 'var(--indigo)',
@@ -559,7 +594,7 @@ export function createMockApiService(): ApiService {
       getList: () => delay(ok(structuredClone(agents))),
       getById: (id: string) => {
         const agent = agents.find((a) => a.id === id)
-        if (!agent) return delay(Promise.reject(new Error('角色不存在')))
+        if (!agent) return Promise.reject(new Error('角色不存在'))
         return delay(ok(structuredClone(agent)))
       },
       create: (form: AgentForm) => {
@@ -568,8 +603,7 @@ export function createMockApiService(): ApiService {
           name: form.name,
           emoji: form.emoji ?? '🤖',
           style: {
-            gradient:
-              'linear-gradient(135deg, var(--coral), #FF8E53)',
+            gradient: 'linear-gradient(135deg, var(--coral), #FF8E53)',
           },
           description: form.description,
           tags: form.tags,
@@ -589,7 +623,7 @@ export function createMockApiService(): ApiService {
       },
       update: (id: string, form: AgentForm) => {
         const idx = agents.findIndex((a) => a.id === id)
-        if (idx === -1) return delay(Promise.reject(new Error('角色不存在')))
+        if (idx === -1) return Promise.reject(new Error('角色不存在'))
         agents[idx] = {
           ...agents[idx],
           name: form.name,
@@ -607,7 +641,7 @@ export function createMockApiService(): ApiService {
       },
       delete: (id: string) => {
         const idx = agents.findIndex((a) => a.id === id)
-        if (idx === -1) return delay(Promise.reject(new Error('角色不存在')))
+        if (idx === -1) return Promise.reject(new Error('角色不存在'))
         agents.splice(idx, 1)
         return delay(ok(null))
       },
@@ -617,16 +651,14 @@ export function createMockApiService(): ApiService {
       getList: () => delay(ok(structuredClone(devices))),
       getById: (id: string) => {
         const dev = devices.find((d) => d.id === id)
-        if (!dev) return delay(Promise.reject(new Error('设备不存在')))
+        if (!dev) return Promise.reject(new Error('设备不存在'))
         return delay(ok(structuredClone(dev)))
       },
       bind: (code: string, agentId?: string) => {
         if (code.length !== 6) {
-          return delay(Promise.reject(new Error('请输入6位验证码')))
+          return Promise.reject(new Error('请输入6位验证码'))
         }
-        const agent = agentId
-          ? agents.find((a) => a.id === agentId)
-          : null
+        const agent = agentId ? agents.find((a) => a.id === agentId) : null
         const newDev: Device = {
           id: newDevId(),
           name: `设备 ${100 + devices.length + 1}`,
@@ -638,6 +670,9 @@ export function createMockApiService(): ApiService {
           autoUpgrade: true,
           boundAgentId: agent?.id ?? null,
           boundAgentName: agent?.name ?? null,
+          emoji: '🤖',
+          assignedRole: '未分配',
+          hasOTA: false,
         }
         devices.push(newDev)
         if (agent) {
@@ -648,14 +683,12 @@ export function createMockApiService(): ApiService {
       },
       unbind: (id: string) => {
         const idx = devices.findIndex((d) => d.id === id)
-        if (idx === -1) return delay(Promise.reject(new Error('设备不存在')))
+        if (idx === -1) return Promise.reject(new Error('设备不存在'))
         const dev = devices[idx]
         if (dev.boundAgentId) {
           const agent = agents.find((a) => a.id === dev.boundAgentId)
           if (agent) {
-            agent.boundDeviceIds = agent.boundDeviceIds.filter(
-              (did) => did !== id,
-            )
+            agent.boundDeviceIds = agent.boundDeviceIds.filter((did) => did !== id)
             if (agent.boundDeviceIds.length === 0) agent.status = 'offline'
           }
         }
@@ -664,33 +697,35 @@ export function createMockApiService(): ApiService {
       },
       upgradeFirmware: (id: string) => {
         const dev = devices.find((d) => d.id === id)
-        if (!dev) return delay(Promise.reject(new Error('设备不存在')))
+        if (!dev) return Promise.reject(new Error('设备不存在'))
         dev.firmwareVersion = '2.0.6'
         dev.otaStatus = 'latest'
         return delay(ok(structuredClone(dev)))
       },
-      assignRole: (id: string, agentId: string) => {
+      assignRole: (id: string, agentId: string | null) => {
         const dev = devices.find((d) => d.id === id)
-        const agent = agents.find((a) => a.id === agentId)
-        if (!dev) return delay(Promise.reject(new Error('设备不存在')))
-        if (!agent) return delay(Promise.reject(new Error('角色不存在')))
+        if (!dev) return Promise.reject(new Error('设备不存在'))
 
         if (dev.boundAgentId) {
-          const prevAgent = agents.find(
-            (a) => a.id === dev.boundAgentId,
-          )
+          const prevAgent = agents.find((a) => a.id === dev.boundAgentId)
           if (prevAgent) {
-            prevAgent.boundDeviceIds = prevAgent.boundDeviceIds.filter(
-              (did) => did !== id,
-            )
-            if (prevAgent.boundDeviceIds.length === 0)
-              prevAgent.status = 'offline'
+            prevAgent.boundDeviceIds = prevAgent.boundDeviceIds.filter((did) => did !== id)
+            if (prevAgent.boundDeviceIds.length === 0) prevAgent.status = 'offline'
           }
         }
-        dev.boundAgentId = agent.id
-        dev.boundAgentName = agent.name
-        agent.boundDeviceIds.push(id)
-        agent.status = 'online'
+        if (agentId) {
+          const agent = agents.find((a) => a.id === agentId)
+          if (!agent) return Promise.reject(new Error('角色不存在'))
+          dev.boundAgentId = agent.id
+          dev.boundAgentName = agent.name
+          if (!agent.boundDeviceIds.includes(id)) {
+            agent.boundDeviceIds.push(id)
+          }
+          agent.status = 'online'
+        } else {
+          dev.boundAgentId = null
+          dev.boundAgentName = null
+        }
         return delay(ok(structuredClone(dev)))
       },
     },
@@ -706,24 +741,39 @@ export function createMockApiService(): ApiService {
           language: '中文',
           gender: 'female',
           isCloned: true,
-          isSelected: false,
+          selected: false,
           gradient: 'linear-gradient(135deg, var(--violet), var(--coral))',
+          emoji: '🎙️',
+          style: { gradient: 'linear-gradient(135deg, var(--violet), var(--coral))' },
           category: 'cloned',
         }
         voices.push(cloned)
         return delay(ok(structuredClone(cloned)), 3700)
       },
       selectVoice: (id: string) => {
-        voices.forEach((v) => (v.isSelected = v.id === id))
+        voices.forEach((v) => (v.selected = v.id === id))
         return delay(ok(null))
       },
     },
 
+    voiceLibrary: {
+      getList: () => delay(ok(structuredClone(voices))),
+    },
+
     knowledge: {
       getList: () => delay(ok(structuredClone(knowledgeBases))),
+      getDetail: (id: string) => {
+        const kb = knowledgeBases.find((k) => k.id === id)
+        if (!kb) return Promise.reject(new Error('知识库不存在'))
+        const detail: KnowledgeDetail = {
+          ...structuredClone(kb),
+          content: ['示例知识点内容1', '示例知识点内容2'],
+        }
+        return delay(ok(detail))
+      },
       toggleKnowledge: (id: string, enabled: boolean) => {
         const kb = knowledgeBases.find((k) => k.id === id)
-        if (!kb) return delay(Promise.reject(new Error('知识库不存在')))
+        if (!kb) return Promise.reject(new Error('知识库不存在'))
         kb.isEnabled = enabled
         kb.status = enabled ? 'enabled' : 'disabled'
         return delay(ok(null))
@@ -746,6 +796,15 @@ export function createMockApiService(): ApiService {
         knowledgeBases.push(newKb)
         return delay(ok(structuredClone(newKb)))
       },
+      delete: (id: string) => {
+        const idx = knowledgeBases.findIndex((k) => k.id === id)
+        if (idx === -1) return Promise.reject(new Error('知识库不存在'))
+        knowledgeBases.splice(idx, 1)
+        return delay(ok(null))
+      },
+      deleteContent: (_id: string, _index: number) => {
+        return delay(ok(null))
+      },
     },
 
     voiceprint: {
@@ -756,13 +815,17 @@ export function createMockApiService(): ApiService {
           name,
           registeredAt: new Date().toISOString().split('T')[0],
           sampleCount: 1,
+          gradient: 'linear-gradient(135deg, #f093fb, #f5576c)',
+          emoji: '🎙️',
+          verified: false,
+          description: '新注册样本',
         }
         speakers.push(newSpeaker)
         return delay(ok(structuredClone(newSpeaker)))
       },
       delete: (id: string) => {
         const idx = speakers.findIndex((s) => s.id === id)
-        if (idx === -1) return delay(Promise.reject(new Error('说话人不存在')))
+        if (idx === -1) return Promise.reject(new Error('说话人不存在'))
         speakers.splice(idx, 1)
         return delay(ok(null))
       },
@@ -772,22 +835,18 @@ export function createMockApiService(): ApiService {
       getList: (filter?: string) => {
         let list = structuredClone(conversationList)
         if (filter && filter !== '全部') {
-          list = list.filter(
-            (c) =>
-              c.agentName === filter ||
-              c.dateLabel === filter,
-          )
+          list = list.filter((c) => c.agentName === filter || c.dateLabel === filter)
         }
         return delay(ok(list))
       },
       getConversation: (id: string) => {
         const conv = conversationDetails[id]
-        if (!conv) return delay(Promise.reject(new Error('对话不存在')))
+        if (!conv) return Promise.reject(new Error('对话不存在'))
         return delay(ok(structuredClone(conv)))
       },
       getMessages: (conversationId: string) => {
         const conv = conversationDetails[conversationId]
-        if (!conv) return delay(Promise.reject(new Error('对话不存在')))
+        if (!conv) return Promise.reject(new Error('对话不存在'))
         return delay(ok(structuredClone(conv.messages)))
       },
     },

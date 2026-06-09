@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import type { AgentForm, Agent } from '@/types'
+import { ref, computed, onMounted } from 'vue'
+import type { AgentForm, Agent, KnowledgeBase, Voice, Device } from '@/types'
 import { useModal } from '@/composables'
 import { useAgentsStore, useUiStore } from '@/store'
+import { apiService } from '@/services'
 import { InfoTip, Switch } from '@/components/ui'
 
 const { close } = useModal()
@@ -17,6 +18,7 @@ const systemPrompt = ref('')
 const templatesOpen = ref(false)
 const voiceId = ref<string | null>(null)
 const knowledgeIds = ref<string[]>([])
+const deviceIds = ref<string[]>([])
 const speed = ref(55)
 const volume = ref(80)
 const pitch = ref(60)
@@ -24,16 +26,52 @@ const saving = ref(false)
 
 const wordCount = computed(() => systemPrompt.value.length)
 const wordCountClass = computed(() =>
-  wordCount.value > 500 ? 'text-[var(--coral)] bg-[#fff0f0]' : wordCount.value > 350 ? 'text-[var(--amber)] bg-[#fff8e6]' : 'text-[var(--text3)] bg-[var(--bg2)]',
+  wordCount.value > 500
+    ? 'text-[var(--coral)] bg-[#fff0f0]'
+    : wordCount.value > 350
+      ? 'text-[var(--amber)] bg-[#fff8e6]'
+      : 'text-[var(--text3)] bg-[var(--bg2)]',
 )
 
-const activeModalTab = ref<'persona' | 'voice' | 'kb'>('persona')
+const activeModalTab = ref<'persona' | 'voice' | 'kb' | 'device'>('persona')
 
-const builtInKnowledges = [
-  { id: 'kb-1', name: '小学数学题库', desc: '3,240 道题', icon: '📗', bg: '#e8fdf5' },
-  { id: 'kb-2', name: '英语绘本词汇', desc: '1,500 词', icon: '📘', bg: '#eef0fc' },
-  { id: 'kb-3', name: '经典童话故事', desc: '328 篇', icon: '📙', bg: '#fff8e6' },
-]
+const availableKbs = ref<KnowledgeBase[]>([])
+const kbsLoading = ref(false)
+const availableVoices = ref<Voice[]>([])
+const availableDevices = ref<Device[]>([])
+
+async function loadKnowledgeBases() {
+  if (availableKbs.value.length > 0) return
+  kbsLoading.value = true
+  try {
+    const res = await apiService.knowledge.getList()
+    availableKbs.value = res.data
+  } catch {
+    /* ignore */
+  } finally {
+    kbsLoading.value = false
+  }
+}
+
+async function loadVoices() {
+  if (availableVoices.value.length > 0) return
+  try {
+    const res = await apiService.voices.getList()
+    availableVoices.value = res.data
+  } catch {
+    /* ignore */
+  }
+}
+
+async function loadDevices() {
+  if (availableDevices.value.length > 0) return
+  try {
+    const res = await apiService.devices.getList()
+    availableDevices.value = res.data
+  } catch {
+    /* ignore */
+  }
+}
 
 function initForm() {
   if (isCreate.value) {
@@ -41,6 +79,7 @@ function initForm() {
     systemPrompt.value = ''
     voiceId.value = null
     knowledgeIds.value = []
+    deviceIds.value = []
     speed.value = 55
     volume.value = 80
     pitch.value = 60
@@ -51,9 +90,10 @@ function initForm() {
       systemPrompt.value = agent.systemPrompt
       voiceId.value = agent.voiceId
       knowledgeIds.value = [...agent.knowledgeIds]
-      speed.value = agent.speed
-      volume.value = agent.volume
-      pitch.value = agent.pitch
+      deviceIds.value = [...agent.boundDeviceIds]
+      speed.value = Math.round(agent.speed * 100)
+      volume.value = Math.round(agent.volume * 100)
+      pitch.value = Math.round(agent.pitch * 100)
     }
   }
   templatesOpen.value = false
@@ -67,6 +107,30 @@ function applyTemplate(key: string) {
   }
 }
 
+function toggleKbId(kbId: string, val: boolean) {
+  if (val) {
+    if (!knowledgeIds.value.includes(kbId)) knowledgeIds.value = [...knowledgeIds.value, kbId]
+  } else {
+    knowledgeIds.value = knowledgeIds.value.filter((id) => id !== kbId)
+  }
+}
+
+function toggleDeviceId(devId: string, val: boolean) {
+  if (val) {
+    if (!deviceIds.value.includes(devId)) deviceIds.value = [...deviceIds.value, devId]
+  } else {
+    deviceIds.value = deviceIds.value.filter((id) => id !== devId)
+  }
+}
+
+function getDeviceLabel(dev: Device): string {
+  if (dev.boundAgentId && dev.boundAgentId !== editId.value) {
+    const other = agentsStore.agents.find((a) => a.id === dev.boundAgentId)
+    return other ? `已绑定：${other.name}` : '已绑定'
+  }
+  return ''
+}
+
 async function saveConfig() {
   saving.value = true
   try {
@@ -76,9 +140,10 @@ async function saveConfig() {
       systemPrompt: systemPrompt.value,
       voiceId: voiceId.value,
       knowledgeIds: knowledgeIds.value,
-      speed: speed.value,
-      volume: volume.value,
-      pitch: pitch.value,
+      deviceIds: deviceIds.value,
+      speed: speed.value / 100,
+      volume: volume.value / 100,
+      pitch: pitch.value / 100,
       tags: [],
     }
     if (isCreate.value) {
@@ -95,6 +160,11 @@ async function saveConfig() {
   }
 }
 
+onMounted(() => {
+  loadKnowledgeBases()
+  loadVoices()
+  loadDevices()
+})
 initForm()
 </script>
 
@@ -106,6 +176,7 @@ initForm()
           { id: 'persona' as const, label: '🎭 人设' },
           { id: 'voice' as const, label: '🔊 声音' },
           { id: 'kb' as const, label: '📚 知识库' },
+          { id: 'device' as const, label: '📱 设备' },
         ]"
         :key="tab.id"
         :class="[
@@ -121,9 +192,13 @@ initForm()
     </div>
 
     <div class="overflow-y-auto flex-1 pt-5">
+      <!--  人设 -->
       <div v-show="activeModalTab === 'persona'">
         <div class="mb-[18px]">
-          <label class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2">伙伴名称</label>
+          <label
+            class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
+            >伙伴名称</label
+          >
           <input
             v-model="agentName"
             class="w-full p-[11px] border-[1.5px] border-[var(--border)] rounded-[var(--radius-sm)] text-sm text-[var(--text1)] bg-[var(--bg)] outline-none transition-all duration-200 focus:border-[var(--coral)] focus:shadow-[0_0_0_3px_rgba(255,107,107,.1)] focus:bg-white"
@@ -133,7 +208,9 @@ initForm()
 
         <div class="mb-[18px]">
           <div class="flex justify-between items-center mb-2">
-            <label class="text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase">系统提示词</label>
+            <label class="text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase"
+              >系统提示词</label
+            >
             <button
               class="text-xs font-extrabold text-[var(--indigo)] bg-[#eef0fc] px-3 py-1 rounded-full cursor-pointer border-none transition-all duration-200 hover:bg-[#dde1f8]"
               @click="templatesOpen = !templatesOpen"
@@ -149,7 +226,9 @@ initForm()
               class="flex items-center gap-2.5 px-3 py-2.5 bg-[var(--bg)] rounded-[var(--radius-sm)] cursor-pointer border-[1.5px] border-transparent transition-all duration-150 hover:border-[var(--indigo-lt)] hover:bg-[#eef0fc]"
               @click="applyTemplate(tpl.key)"
             >
-              <div class="w-[34px] h-[34px] rounded-[10px] bg-white flex items-center justify-center text-lg shrink-0 shadow-[var(--shadow-sm)]">
+              <div
+                class="w-[34px] h-[34px] rounded-[10px] bg-white flex items-center justify-center text-lg shrink-0 shadow-[var(--shadow-sm)]"
+              >
                 {{ tpl.icon }}
               </div>
               <div>
@@ -166,12 +245,11 @@ initForm()
           />
 
           <div class="flex justify-between items-center mt-1.5">
-            <span class="text-[11px] text-[var(--text3)] font-semibold">💡 建议描述：名字、性格、说话方式、擅长话题</span>
+            <span class="text-[11px] text-[var(--text3)] font-semibold"
+              >💡 建议描述：名字、性格、说话方式、擅长话题</span
+            >
             <span
-              :class="[
-                'text-[11px] font-extrabold px-2 py-0.5 rounded-[10px]',
-                wordCountClass,
-              ]"
+              :class="['text-[11px] font-extrabold px-2 py-0.5 rounded-[10px]', wordCountClass]"
             >
               {{ wordCount }} 字
             </span>
@@ -179,23 +257,29 @@ initForm()
         </div>
       </div>
 
+      <!--  声音 -->
       <div v-show="activeModalTab === 'voice'">
         <div class="mb-[18px]">
-          <label class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2">音色选择</label>
+          <label
+            class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
+            >音色选择</label
+          >
           <select
             v-model="voiceId"
             class="w-full p-[11px] border-[1.5px] border-[var(--border)] rounded-[var(--radius-sm)] text-sm text-[var(--text1)] bg-[var(--bg)] outline-none cursor-pointer"
           >
             <option :value="null">默认音色</option>
-            <option value="voice-f-1">甜美女声 A</option>
-            <option value="voice-m-1">活泼男声 B</option>
-            <option value="voice-f-2">温柔女声 C</option>
-            <option value="voice-f-3">卡通音色 D</option>
+            <option v-for="v in availableVoices" :key="v.id" :value="v.id">
+              {{ v.name }}
+            </option>
           </select>
         </div>
 
         <div class="mb-[18px]">
-          <label class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2">语速调节</label>
+          <label
+            class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
+            >语速调节</label
+          >
           <input
             v-model.number="speed"
             type="range"
@@ -204,13 +288,15 @@ initForm()
             class="w-full h-[5px] rounded-[3px] bg-[var(--bg2)] outline-none appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--coral)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(255,107,107,.35)]"
           />
           <div class="flex justify-between text-xs text-[var(--text3)] mt-1.5 font-semibold">
-            <span>🐢 慢速</span>
-            <span>🐇 快速</span>
+            <span>🐢 慢速</span><span>🐇 快速</span>
           </div>
         </div>
 
         <div class="mb-[18px]">
-          <label class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2">音量大小</label>
+          <label
+            class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
+            >音量大小</label
+          >
           <input
             v-model.number="volume"
             type="range"
@@ -219,13 +305,15 @@ initForm()
             class="w-full h-[5px] rounded-[3px] bg-[var(--bg2)] outline-none appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--coral)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(255,107,107,.35)]"
           />
           <div class="flex justify-between text-xs text-[var(--text3)] mt-1.5 font-semibold">
-            <span>🔇 安静</span>
-            <span>🔊 响亮</span>
+            <span>🔇 安静</span><span>🔊 响亮</span>
           </div>
         </div>
 
         <div class="mb-[18px]">
-          <label class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2">音调高低</label>
+          <label
+            class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
+            >音调高低</label
+          >
           <input
             v-model.number="pitch"
             type="range"
@@ -234,37 +322,103 @@ initForm()
             class="w-full h-[5px] rounded-[3px] bg-[var(--bg2)] outline-none appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--coral)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(255,107,107,.35)]"
           />
           <div class="flex justify-between text-xs text-[var(--text3)] mt-1.5 font-semibold">
-            <span>低沉</span>
-            <span>高亢</span>
+            <span>低沉</span><span>高亢</span>
           </div>
         </div>
-
-        <InfoTip>
-          💡 调整完成后点击「试听」可以预览效果
-        </InfoTip>
+        <InfoTip> 💡 调整完成后点击「试听」可以预览效果 </InfoTip>
       </div>
 
+      <!--  知识库 -->
       <div v-show="activeModalTab === 'kb'">
-        <div class="bg-[var(--surface)] rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden">
+        <div v-if="kbsLoading" class="text-center text-[var(--text3)] text-sm py-8">加载中…</div>
+        <div
+          v-else-if="availableKbs.length === 0"
+          class="bg-[var(--bg)] rounded-[var(--radius-md)] text-center py-8 px-4"
+        >
+          <div class="text-[32px] mb-2">📭</div>
+          <div class="text-sm font-bold text-[var(--text2)] mb-1">暂无可用知识库</div>
+          <div class="text-xs text-[var(--text3)]">去「知识库」页面先上传你的文档吧</div>
+        </div>
+        <div
+          v-else
+          class="bg-[var(--surface)] rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden"
+        >
           <div
-            v-for="kb in builtInKnowledges"
+            v-for="kb in availableKbs"
             :key="kb.id"
             class="flex justify-between items-center px-[18px] py-3.5 border-b border-[var(--border)] last:border-b-0"
+            :class="kb.isEnabled ? '' : 'opacity-50'"
           >
             <div class="flex items-center gap-3">
-              <div class="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center text-base shrink-0" :style="{ background: kb.bg }">
-                {{ kb.icon }}
+              <div
+                class="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center text-base shrink-0"
+                :style="{ background: kb.isSystem ? '#e8fdf5' : '#eef0fc' }"
+              >
+                {{ kb.isSystem ? '🧠' : '📄' }}
               </div>
               <div>
-                <div class="text-sm font-bold text-[var(--text1)]">{{ kb.name }}</div>
-                <div class="text-xs text-[var(--text3)] mt-px">{{ kb.desc }}</div>
+                <div class="text-sm font-bold text-[var(--text1)]">
+                  {{ kb.name }}
+                  <span v-if="!kb.isEnabled" class="text-[10px] text-[var(--text3)]">(已禁用)</span>
+                </div>
+                <div class="text-xs text-[var(--text3)] mt-px">
+                  {{ kb.itemCount }} {{ kb.itemUnit }} · {{ kb.description }}
+                </div>
               </div>
             </div>
             <Switch
               :model-value="knowledgeIds.includes(kb.id)"
-              @update:model-value="(val: boolean) => val ? knowledgeIds.push(kb.id) : knowledgeIds = knowledgeIds.filter(id => id !== kb.id)"
+              :disabled="!kb.isEnabled"
+              @update:model-value="(val: boolean) => toggleKbId(kb.id, val)"
             />
           </div>
+        </div>
+      </div>
+
+      <!--  设备 -->
+      <div v-show="activeModalTab === 'device'">
+        <div
+          v-if="availableDevices.length === 0"
+          class="bg-[var(--bg)] rounded-[var(--radius-md)] text-center py-8 px-4"
+        >
+          <div class="text-[32px] mb-2">📱</div>
+          <div class="text-sm font-bold text-[var(--text2)] mb-1">暂无设备</div>
+          <div class="text-xs text-[var(--text3)]">去「设备管理」页面先添加设备吧</div>
+        </div>
+        <div
+          v-else
+          class="bg-[var(--surface)] rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden"
+        >
+          <div
+            v-for="dev in availableDevices"
+            :key="dev.id"
+            class="flex justify-between items-center px-[18px] py-3.5 border-b border-[var(--border)] last:border-b-0"
+          >
+            <div class="flex items-center gap-3">
+              <div
+                class="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center text-base shrink-0"
+                :style="{ background: dev.status === 'online' ? '#e8fdf5' : '#fff0f0' }"
+              >
+                📱
+              </div>
+              <div>
+                <div class="text-sm font-bold text-[var(--text1)]">{{ dev.name }}</div>
+                <div class="text-xs text-[var(--text3)] mt-px">
+                  <span :class="dev.status === 'online' ? 'text-[var(--teal)]' : ''">{{
+                    dev.status === 'online' ? '●' : '○'
+                  }}</span>
+                  {{ getDeviceLabel(dev) || dev.mac }}
+                </div>
+              </div>
+            </div>
+            <Switch
+              :model-value="deviceIds.includes(dev.id)"
+              @update:model-value="(val: boolean) => toggleDeviceId(dev.id, val)"
+            />
+          </div>
+        </div>
+        <div class="text-[11px] text-[var(--text3)] mt-2 font-semibold">
+          💡 选中设备即绑定到当前角色，取消选中则解绑。若设备已绑定其他角色，选中后将自动切换。
         </div>
       </div>
     </div>

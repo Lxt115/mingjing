@@ -20,6 +20,16 @@ function openAddDevice(agent: Agent) {
   ui.openModal('modal-add-device', { agentId: agent.id })
 }
 
+async function confirmDelete(agent: Agent) {
+  if (!window.confirm(`确定要删除角色「${agent.name}」吗？此操作不可撤销。`)) return
+  try {
+    await agentsStore.deleteAgent(agent.id)
+    ui.showToast(`✅ 「${agent.name}」已删除`)
+  } catch (e) {
+    ui.showToast(e instanceof Error ? e.message : '❌ 删除失败', 'error')
+  }
+}
+
 onMounted(() => {
   agentsStore.fetchAgents()
 })
@@ -28,36 +38,13 @@ onMounted(() => {
 <template>
   <!-- Desktop Layout -->
   <div v-if="!isMobile" class="animate-[fadeIn_.25s_ease]">
-    <div class="grid grid-cols-4 gap-4 mb-6">
-      <div class="stat-card bg-[var(--surface)] rounded-[var(--radius-md)] p-5 border border-[var(--border)] shadow-[var(--shadow-sm)] relative overflow-hidden after:content-[attr(data-icon)] after:absolute after:right-3.5 after:bottom-2.5 after:text-4xl after:opacity-10" data-icon="🤖">
-        <div class="text-xs text-[var(--text3)] font-semibold tracking-[.4px] uppercase mb-2">创建角色</div>
-        <div class="text-[28px] font-black text-[var(--text1)] leading-none mb-1">{{ agentsStore.agents.length }}</div>
-        <div class="text-[11px] text-[var(--text3)] font-medium">共 {{ agentsStore.agents.length }} 个活跃</div>
-      </div>
-      <div class="stat-card bg-[var(--surface)] rounded-[var(--radius-md)] p-5 border border-[var(--border)] shadow-[var(--shadow-sm)] relative overflow-hidden after:content-[attr(data-icon)] after:absolute after:right-3.5 after:bottom-2.5 after:text-4xl after:opacity-10" data-icon="📱">
-        <div class="text-xs text-[var(--text3)] font-semibold tracking-[.4px] uppercase mb-2">绑定设备</div>
-        <div class="text-[28px] font-black text-[var(--text1)] leading-none mb-1">2</div>
-        <div class="text-[11px] text-[var(--text3)] font-medium">1 台在线</div>
-      </div>
-      <div class="stat-card bg-[var(--surface)] rounded-[var(--radius-md)] p-5 border border-[var(--border)] shadow-[var(--shadow-sm)] relative overflow-hidden after:content-[attr(data-icon)] after:absolute after:right-3.5 after:bottom-2.5 after:text-4xl after:opacity-10" data-icon="💬">
-        <div class="text-xs text-[var(--text3)] font-semibold tracking-[.4px] uppercase mb-2">对话次数</div>
-        <div class="text-[28px] font-black text-[var(--text1)] leading-none mb-1">127</div>
-        <div class="text-[11px] text-[var(--text3)] font-medium">本月 38 次</div>
-      </div>
-      <div class="stat-card bg-[var(--surface)] rounded-[var(--radius-md)] p-5 border border-[var(--border)] shadow-[var(--shadow-sm)] relative overflow-hidden after:content-[attr(data-icon)] after:absolute after:right-3.5 after:bottom-2.5 after:text-4xl after:opacity-10" data-icon="⏱️">
-        <div class="text-xs text-[var(--text3)] font-semibold tracking-[.4px] uppercase mb-2">陪伴时长</div>
-        <div class="text-[28px] font-black text-[var(--text1)] leading-none mb-1">43h</div>
-        <div class="text-[11px] text-[var(--text3)] font-medium">较上月 +12h</div>
-      </div>
-    </div>
-
     <div class="grid grid-cols-[repeat(auto-fill,minmax(340px,1fr))] gap-4">
       <div
         v-for="agent in agentsStore.agents"
         :key="agent.id"
-        class="agent-card bg-[var(--surface)] rounded-[var(--radius-lg)] border-[1.5px] border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden transition-all duration-250 cursor-pointer hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] hover:border-[rgba(255,107,107,.2)]"
+        class="agent-card bg-[var(--surface)] rounded-[var(--radius-lg)] border-[1.5px] border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden transition-all duration-250 cursor-pointer hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] hover:border-[rgba(255,107,107,.2)] flex flex-col"
       >
-        <div class="flex items-start gap-3.5 p-5 pb-4">
+        <div class="flex-1 flex items-start gap-3.5 p-5 pb-4">
           <div
             class="w-[52px] h-[52px] rounded-2xl flex items-center justify-center text-[26px] shrink-0 shadow-[0_2px_10px_rgba(0,0,0,.1)]"
             :style="{ background: agent.style.gradient }"
@@ -67,27 +54,8 @@ onMounted(() => {
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
               <span class="text-[17px] font-black text-[var(--text1)]">{{ agent.name }}</span>
-              <span
-                :class="[
-                  'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold',
-                  agent.status === 'online'
-                    ? 'bg-[#e8fdf5] text-[var(--teal)]'
-                    : 'bg-[#fff0f0] text-[var(--text3)]',
-                ]"
-              >
-                {{ agent.status === 'online' ? '在线' : '离线' }}
-              </span>
             </div>
-            <div class="text-[13px] text-[var(--text2)] leading-relaxed mb-2.5">{{ agent.description }}</div>
-            <div class="flex flex-wrap gap-1">
-              <span
-                v-for="tag in agent.tags"
-                :key="tag.label"
-                class="bg-[var(--bg)] text-[var(--text2)] text-[11px] font-bold px-2 py-0.5 rounded-full"
-              >
-                {{ tag.icon }} {{ tag.label }}
-              </span>
-            </div>
+            <div class="text-[13px] text-[var(--text2)] leading-relaxed mb-2.5 line-clamp-2">{{ agent.systemPrompt }}</div>
           </div>
         </div>
 
@@ -95,38 +63,30 @@ onMounted(() => {
           <div
             :class="[
               'flex items-center gap-1.5 text-xs font-bold',
-              agent.status === 'online' ? 'text-[var(--teal)]' : 'text-[var(--text3)]',
+              agent.boundDeviceIds.length > 0 ? 'text-[var(--teal)]' : 'text-[var(--text3)]',
             ]"
           >
             <div
               :class="[
                 'w-1.5 h-1.5 rounded-full',
-                agent.status === 'online' ? 'bg-[var(--teal)] animate-pulse' : 'bg-[var(--text3)]',
+                agent.boundDeviceIds.length > 0 ? 'bg-[var(--teal)]' : 'bg-[var(--text3)]',
               ]"
             />
-            {{ agent.boundDeviceIds.length > 0 ? `设备 101 · ${agent.status === 'online' ? '在线' : '离线'}` : '暂未绑定设备' }}
+            {{ agent.boundDeviceIds.length > 0 ? `已绑定设备（${agent.boundDeviceIds.length}）` : '暂未绑定设备' }}
           </div>
           <div class="flex gap-2">
             <button
-            v-if="agent.boundDeviceIds.length > 0"
-            class="h-[30px] px-3 rounded-lg bg-[#e8fdf5] text-[var(--teal)] border-none text-xs font-bold cursor-pointer flex items-center gap-1.5 transition-all duration-200 hover:bg-[#c8f5e8]"
-            @click="openManageDevices(agent)"
-          >
-            📱 管理设备（{{ agent.boundDeviceIds.length }}）
-          </button>
-          <button
-            v-else
-            class="h-[30px] px-3 rounded-lg bg-[#eef0fc] text-[var(--indigo)] border-none text-xs font-bold cursor-pointer flex items-center gap-1.5 transition-all duration-200 hover:bg-[#dde1f8]"
-            @click="openAddDevice(agent)"
-          >
-            ➕ 添加设备
-          </button>
-          <button
-            class="h-[30px] px-3 rounded-lg bg-[var(--bg2)] text-[var(--text2)] border-none text-xs font-bold cursor-pointer flex items-center gap-1.5 transition-all duration-200 hover:bg-[var(--border)]"
-            @click="openConfig(agent)"
-          >
-            ⚙️ 配置
-          </button>
+              class="h-[30px] px-3 rounded-lg bg-[var(--bg2)] text-[var(--text2)] border-none text-xs font-bold cursor-pointer flex items-center gap-1.5 transition-all duration-200 hover:bg-[var(--border)]"
+              @click="openConfig(agent)"
+            >
+              ⚙️ 配置
+            </button>
+            <button
+              class="h-[30px] px-3 rounded-lg bg-transparent text-[var(--text3)] border-[1.5px] border-[var(--border)] text-xs font-bold cursor-pointer flex items-center gap-1.5 transition-all duration-200 hover:bg-[rgba(255,107,107,.08)] hover:text-[var(--coral)] hover:border-[var(--coral)]"
+              @click.stop="confirmDelete(agent)"
+            >
+              🗑 删除
+            </button>
           </div>
         </div>
       </div>
@@ -167,29 +127,16 @@ onMounted(() => {
           </div>
           <div class="flex-1 min-w-0">
             <div class="text-base font-black text-[var(--text1)] mb-1">{{ agent.name }}</div>
-            <div class="text-xs text-[var(--text3)] leading-relaxed mb-2 whitespace-nowrap overflow-hidden text-ellipsis">{{ agent.description }}</div>
-            <div class="flex flex-wrap gap-1">
-              <span
-                v-for="tag in agent.tags"
-                :key="tag.label"
-                class="bg-[var(--bg2)] text-[var(--text2)] text-[11px] font-bold px-2 py-0.5 rounded-[20px]"
-              >
-                {{ tag.icon }} {{ tag.label }}
-              </span>
-            </div>
+            <div class="text-xs text-[var(--text3)] leading-relaxed mb-2 whitespace-nowrap overflow-hidden text-ellipsis">{{ agent.systemPrompt }}</div>
           </div>
         </div>
         <div class="flex flex-col items-end gap-2 shrink-0">
-          <div class="flex items-center gap-1 text-[11px] font-bold text-[var(--teal)]">
-            <div class="w-[7px] h-[7px] rounded-full bg-[var(--teal)] animate-pulse" v-if="agent.status === 'online'" />
-            {{ agent.status === 'online' ? '在线' : '离线' }}
-          </div>
           <button
             v-if="agent.boundDeviceIds.length > 0"
             class="py-1 px-2.5 rounded-[10px] bg-[#e8fdf5] text-[var(--teal)] border-none text-[11px] font-bold cursor-pointer transition-all duration-200 active:scale-[.9]"
             @click.stop="openManageDevices(agent)"
           >
-            📱 设备（{{ agent.boundDeviceIds.length }}）
+            📱 已绑定（{{ agent.boundDeviceIds.length }}）
           </button>
           <button
             v-else
@@ -197,6 +144,12 @@ onMounted(() => {
             @click.stop="openAddDevice(agent)"
           >
             ➕ 添加
+          </button>
+          <button
+            class="py-1 px-2.5 rounded-[10px] border-[1.5px] border-[var(--border)] text-[var(--text3)] bg-transparent text-[11px] font-bold cursor-pointer transition-all duration-200 active:scale-[.9]"
+            @click.stop="confirmDelete(agent)"
+          >
+            🗑
           </button>
         </div>
       </div>

@@ -16,6 +16,7 @@ export const useUiStore = defineStore('ui', () => {
   const modalData = ref<Record<string, unknown>>({})
   const sidebarCollapsed = ref(false)
   const memoryTipVisible = ref(true)
+  const kbRefreshCounter = ref(0)
 
   const isModalOpen = computed(() => activeModalId.value !== null)
 
@@ -49,17 +50,23 @@ export const useUiStore = defineStore('ui', () => {
     memoryTipVisible.value = visible
   }
 
+  function triggerKbRefresh() {
+    kbRefreshCounter.value++
+  }
+
   return {
     toasts,
     activeModalId,
     modalData,
     sidebarCollapsed,
     memoryTipVisible,
+    kbRefreshCounter,
     isModalOpen,
     showToast,
     openModal,
     closeModal,
     toggleSidebar,
     setMemoryTip,
+    triggerKbRefresh,
   }
 })

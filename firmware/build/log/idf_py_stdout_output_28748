@@ -1,0 +1,125 @@
+Command: C:\Users\withl\.espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe D:\Software\esp\.espressif\v5.5.4\esp-idf\tools/idf_monitor.py -p COM5 -b 115200 --toolchain-prefix riscv32-esp-elf- --target esp32c3 --revision 3 --decode-panic backtrace D:\personal\project\260504_aidoll\260504_aidoll_t_web\firmware\build\aidoll_device.elf D:\personal\project\260504_aidoll\260504_aidoll_t_web\firmware\build\bootloader\bootloader.elf --force-color -m 'C:\Users\withl\.espressif\python_env\idf5.5_py3.11_env\Scripts\python.exe' 'D:\Software\esp\.espressif\v5.5.4\esp-idf\tools\idf.py'
+ESP-ROM:esp32c3-api1-20210207
+Build:Feb  7 2021
+rst:0x15 (USB_UART_CHIP_RESET),boot:0xf (SPI_FAST_FLASH_BOOT)
+Saved PC:0x420052f8
+SPIWP:0xee
+mode:DIO, clock div:1
+load:0x3fcd5820,len:0x155c
+load:0x403cbf10,len:0xc84
+load:0x403ce710,len:0x2fa4
+entry 0x403cbf1a
+[0;32mI (24) boot: ESP-IDF v5.5.4 2nd stage bootloader[0m
+[0;32mI (24) boot: compile time Jun  4 2026 13:09:42[0m
+[0;32mI (25) boot: chip revision: v0.4[0m
+[0;32mI (25) boot: efuse block revision: v1.3[0m
+[0;32mI (28) boot.esp32c3: SPI Speed      : 80MHz[0m
+[0;32mI (32) boot.esp32c3: SPI Mode       : DIO[0m
+[0;32mI (36) boot.esp32c3: SPI Flash Size : 16MB[0m
+[0;32mI (39) boot: Enabling RNG early entropy source...[0m
+[0;32mI (44) boot: Partition Table:[0m
+[0;32mI (47) boot: ## Label            Usage          Type ST Offset   Length[0m
+[0;32mI (53) boot:  0 nvs              WiFi data        01 02 00009000 00005000[0m
+[0;32mI (59) boot:  1 otadata          OTA data         01 00 0000e000 00002000[0m
+[0;32mI (66) boot:  2 phy_init         RF data          01 01 00010000 00001000[0m
+[0;32mI (72) boot:  3 factory          factory app      00 00 00020000 00100000[0m
+[0;32mI (79) boot:  4 ota_0            OTA app          00 10 00120000 00100000[0m
+[0;32mI (85) boot:  5 ota_1            OTA app          00 11 00220000 00100000[0m
+[0;32mI (92) boot:  6 spiffs           Unknown data     01 82 00320000 000e0000[0m
+[0;32mI (98) boot: End of partition table[0m
+[0;32mI (102) boot: Defaulting to factory image[0m
+[0;32mI (105) esp_image: segment 0: paddr=00020020 vaddr=3c0b0020 size=201b4h (131508) map[0m
+[0;32mI (134) esp_image: segment 1: paddr=000401dc vaddr=3fc92c00 size=030c4h ( 12484) load[0m
+[0;32mI (136) esp_image: segment 2: paddr=000432a8 vaddr=40380000 size=0cd70h ( 52592) load[0m
+[0;32mI (147) esp_image: segment 3: paddr=00050020 vaddr=42000020 size=a5420h (676896) map[0m
+[0;32mI (253) esp_image: segment 4: paddr=000f5448 vaddr=4038cd70 size=05d90h ( 23952) load[0m
+[0;32mI (257) esp_image: segment 5: paddr=000fb1e0 vaddr=50000000 size=00020h (    32) load[0m
+[0;32mI (263) boot: Loaded app from partition at offset 0x20000[0m
+[0;32mI (263) boot: Disabling RNG early entropy source...[0m
+[0;32mI (278) cpu_start: Unicore app[0m
+[0;32mI (286) cpu_start: GPIO 20 and 21 are used as console UART I/O pins[0m
+[0;32mI (286) cpu_start: Pro cpu start user code[0m
+[0;32mI (286) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (288) app_init: Application information:[0m
+[0;32mI (292) app_init: Project name:     aidoll_device[0m
+[0;32mI (297) app_init: App version:      6c44cce-dirty[0m
+[0;32mI (301) app_init: Compile time:     Jun  4 2026 13:09:24[0m
+[0;32mI (306) app_init: ELF file SHA256:  b9cf82e71...[0m
+[0;32mI (310) app_init: ESP-IDF:          v5.5.4[0m
+[0;32mI (314) efuse_init: Min chip rev:     v0.3[0m
+[0;32mI (318) efuse_init: Max chip rev:     v1.99 [0m
+[0;32mI (322) efuse_init: Chip rev:         v0.4[0m
+[0;32mI (326) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (332) heap_init: At 3FC9CAB0 len 00023550 (141 KiB): RAM[0m
+[0;32mI (337) heap_init: At 3FCC0000 len 0001C710 (113 KiB): Retention RAM[0m
+[0;32mI (343) heap_init: At 3FCDC710 len 00002950 (10 KiB): Retention RAM[0m
+[0;32mI (349) heap_init: At 50000020 len 00001FC8 (7 KiB): RTCRAM[0m
+[0;32mI (356) spi_flash: detected chip: generic[0m
+[0;32mI (358) spi_flash: flash io: dio[0m
+[0;32mI (362) sleep_gpio: Configure to isolate all GPIO pins in sleep state[0m
+[0;32mI (368) sleep_gpio: Enable automatic switching of GPIO sleep configuration[0m
+[0;32mI (375) main_task: Started on CPU0[0m
+[0;32mI (378) main_task: Calling app_main()[0m
+[0;32mI (395) pp: pp rom version: 9387209[0m
+[0;32mI (395) net80211: net80211 rom version: 9387209[0m
+[0;32mI (397) wifi:wifi driver task: 3fca7224, prio:23, stack:6656, core=0[0m
+[0;32mI (404) wifi:wifi firmware version: 0947e8b[0m
+[0;32mI (405) wifi:wifi certification version: v7.0[0m
+[0;32mI (405) wifi:config NVS flash: enabled[0m
+[0;32mI (409) wifi:config nano formatting: disabled[0m
+[0;32mI (413) wifi:Init data frame dynamic rx buffer num: 32[0m
+[0;32mI (418) wifi:Init static rx mgmt buffer num: 5[0m
+[0;32mI (422) wifi:Init management short buffer num: 32[0m
+[0;32mI (426) wifi:Init dynamic tx buffer num: 32[0m
+[0;32mI (430) wifi:Init static tx FG buffer num: 2[0m
+[0;32mI (434) wifi:Init static rx buffer size: 1600[0m
+[0;32mI (438) wifi:Init static rx buffer num: 8[0m
+[0;32mI (442) wifi:Init dynamic rx buffer num: 32[0m
+[0;32mI (447) wifi_init: rx ba win: 6[0m
+[0;32mI (449) wifi_init: accept mbox: 6[0m
+[0;32mI (452) wifi_init: tcpip mbox: 32[0m
+[0;32mI (455) wifi_init: udp mbox: 6[0m
+[0;32mI (458) wifi_init: tcp mbox: 6[0m
+[0;32mI (460) wifi_init: tcp tx win: 5760[0m
+[0;32mI (464) wifi_init: tcp rx win: 5760[0m
+[0;32mI (467) wifi_init: tcp mss: 1440[0m
+[0;32mI (470) wifi_init: WiFi IRAM OP enabled[0m
+[0;32mI (473) wifi_init: WiFi RX IRAM OP enabled[0m
+[0;32mI (478) phy_init: phy_version 1232,d493f299,Aug 25 2025,19:01:20[0m
+[0;32mI (513) wifi:mode : sta (44:1b:f6:03:06:90)[0m
+[0;32mI (514) wifi:enable tsf[0m
+[0;32mI (516) wifi: wifi_init_sta finished.[0m
+[0;32mI (522) wifi:new:<1,0>, old:<1,0>, ap:<255,255>, sta:<1,0>, prof:1, snd_ch_cfg:0x0[0m
+[0;32mI (523) wifi:state: init -> auth (0xb0)[0m
+[0;32mI (1524) wifi:state: auth -> init (0x200)[0m
+[0;32mI (1526) wifi:new:<1,0>, old:<1,0>, ap:<255,255>, sta:<1,0>, prof:1, snd_ch_cfg:0x0[0m
+[0;32mI (1529) wifi: retry to connect to the AP[0m
+[0;32mI (1529) wifi: connect to the AP fail[0m
+[0;32mI (2259) wifi:new:<7,0>, old:<1,0>, ap:<255,255>, sta:<7,0>, prof:1, snd_ch_cfg:0x0[0m
+[0;32mI (2260) wifi:state: init -> auth (0xb0)[0m
+[0;32mI (2265) wifi:state: auth -> assoc (0x0)[0m
+[0;32mI (2273) wifi:state: assoc -> run (0x10)[0m
+[0;32mI (2296) wifi:connected with 502, aid = 4, channel 7, BW20, bssid = 56:f6:e2:50:72:90[0m
+[0;32mI (2297) wifi:security: WPA2-PSK, phy: bgn, rssi: -51, cipher(pairwise:0x3, group:0x3), pmf:0[0m
+[0;32mI (2306) wifi:pm start, type: 1[0m
+
+[0;32mI (2307) wifi:dp: 1, bi: 102400, li: 3, scale listen interval from 307200 us to 307200 us[0m
+[0;32mI (2312) wifi:set rx beacon pti, rx_bcn_pti: 0, bcn_timeout: 25000, mt_pti: 0, mt_time: 10000[0m
+[0;32mI (2321) wifi:AP's beacon interval = 102400 us, DTIM period = 1[0m
+[0;32mI (4500) esp_netif_handlers: sta ip: 192.168.1.80, mask: 255.255.255.0, gw: 192.168.1.1[0m
+[0;32mI (4500) wifi: got ip:192.168.1.80[0m
+[0;32mI (4501) wifi: connected to ap SSID:502[0m
+[0;32mI (4511) ES8311: Work in Slave mode[0m
+[0;32mI (4522) audio: ES8311+I2S ready, SR=16000[0m
+[0;32mI (4522) app: Wi-Fi connected, starting WS → ws://192.168.1.28:8000/ws/voice/00000000-0000-0000-0000-000000000001[0m
+[0;32mI (4529) websocket_client: Started[0m
+[0;32mI (4529) main_task: Returned from app_main()[0m
+[0;32mI (4698) websocket: WEBSOCKET_EVENT_CONNECTED[0m
+[0;32mI (5169) app: WebSocket connected[0m
+[0;32mI (8366) wifi:<ba-add>idx:0 (ifx:0, 56:f6:e2:50:72:90), tid:0, ssn:4, winSize:64[0m
+[0;32mI (133201) app: recording started[0m
+[0;32mI (136801) app: recording stopped, waiting for response[0m
+[0;32mI (136901) app: record done: chunks=0 total_samples=0[0m
+[0;32mI (165107) app: recording started[0m
+[0;32mI (167371) app: recording stopped, waiting for response[0m
+[0;32mI (167407) app: record done: chunks=0 total_samples=0[0m

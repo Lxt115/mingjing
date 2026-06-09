@@ -45,6 +45,7 @@ export interface AgentForm {
   systemPrompt: string
   voiceId: string | null
   knowledgeIds: string[]
+  deviceIds: string[]
   speed: number
   volume: number
   pitch: number
@@ -62,6 +63,9 @@ export interface Device {
   autoUpgrade: boolean
   boundAgentId: string | null
   boundAgentName: string | null
+  emoji: string
+  assignedRole: string
+  hasOTA: boolean
 }
 
 export interface Voice {
@@ -72,8 +76,10 @@ export interface Voice {
   language: string
   gender: VoiceGender
   isCloned: boolean
-  isSelected: boolean
+  selected: boolean
   gradient: string
+  emoji: string
+  style: GradientStyle
   category: 'female' | 'male' | 'english' | 'japanese' | 'korean' | 'cloned'
 }
 
@@ -89,11 +95,19 @@ export interface KnowledgeBase {
   lastUpdated: string | null
 }
 
+export interface KnowledgeDetail extends KnowledgeBase {
+  content: string[]
+}
+
 export interface VoiceprintSpeaker {
   id: string
   name: string
   registeredAt: string
   sampleCount: number
+  gradient: string
+  emoji: string
+  verified: boolean
+  description: string
 }
 
 export interface ConversationListItem {

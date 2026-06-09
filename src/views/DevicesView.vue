@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useDevicesStore, useUiStore } from '@/store'
+import { useDevicesStore, useUiStore, useAgentsStore } from '@/store'
 import { useMediaQuery } from '@/composables'
 import type { Device } from '@/types'
 
 const devicesStore = useDevicesStore()
+const agentsStore = useAgentsStore()
 const ui = useUiStore()
 const { isMobile } = useMediaQuery()
 
@@ -16,14 +17,18 @@ function triggerOTA(device: Device) {
   ui.showToast(`📡 已触发 ${device.name} 固件升级`)
 }
 
-function updateRole(deviceId: string, event: Event) {
-  const role = (event.target as HTMLSelectElement).value
-  ui.showToast(`✅ 角色已切换`)
-  devicesStore.updateRole(deviceId, role)
+async function updateRole(deviceId: string, event: Event) {
+  const value = (event.target as HTMLSelectElement).value
+  try {
+    await devicesStore.assignRole(deviceId, value || null)
+  } catch {
+    // ignore
+  }
 }
 
 onMounted(() => {
   devicesStore.fetchDevices()
+  agentsStore.fetchAgents()
 })
 </script>
 
@@ -72,12 +77,17 @@ onMounted(() => {
             <div class="text-[10px] font-extrabold text-[var(--text3)] tracking-[.4px] uppercase mb-1">绑定角色</div>
             <select
               class="text-sm font-bold border border-[var(--border)] rounded-lg py-1.5 px-2.5 bg-[var(--bg)] text-[var(--text1)] cursor-pointer outline-none focus:border-[var(--coral)] w-full"
-              :value="device.assignedRole"
+              :value="device.boundAgentId"
               @change="updateRole(device.id, $event)"
             >
-              <option value="unknown">未指定</option>
-              <option value="笃笃">笃笃</option>
-              <option value="故事大王">故事大王</option>
+              <option value="">未指定</option>
+              <option
+                v-for="agent in agentsStore.agents"
+                :key="agent.id"
+                :value="agent.id"
+              >
+                {{ agent.name }}
+              </option>
             </select>
           </div>
         </div>
@@ -146,12 +156,17 @@ onMounted(() => {
             <div class="text-[10px] font-extrabold text-[var(--text3)] tracking-[.4px] mb-[3px]">角色</div>
             <select
               class="text-[13px] font-bold bg-transparent border-none text-[var(--text1)] cursor-pointer outline-none"
-              :value="device.assignedRole"
+              :value="device.boundAgentId"
               @change="updateRole(device.id, $event)"
             >
-              <option value="unknown">未指定</option>
-              <option value="笃笃">笃笃</option>
-              <option value="故事大王">故事大王</option>
+              <option value="">未指定</option>
+              <option
+                v-for="agent in agentsStore.agents"
+                :key="agent.id"
+                :value="agent.id"
+              >
+                {{ agent.name }}
+              </option>
             </select>
           </div>
         </div>

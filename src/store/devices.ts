@@ -74,7 +74,7 @@ export const useDevicesStore = defineStore('devices', () => {
     }
   }
 
-  async function assignRole(id: string, agentId: string) {
+  async function assignRole(id: string, agentId: string | null) {
     loading.value = true
     error.value = null
     try {

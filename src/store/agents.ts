@@ -44,8 +44,8 @@ export const useAgentsStore = defineStore('agents', () => {
   const stats = computed(() => ({
     total: agents.value.length,
     online: agents.value.filter((a) => a.status === 'online').length,
-    totalConversations: 127,
-    totalHours: 43,
+    totalConversations: 0,
+    totalHours: 0,
   }))
 
   async function fetchAgents() {

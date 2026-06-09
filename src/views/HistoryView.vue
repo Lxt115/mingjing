@@ -3,11 +3,17 @@ import { ref, onMounted, watch, computed } from 'vue'
 import type { ConversationListItem, Conversation } from '@/types'
 import { apiService } from '@/services'
 import { useMediaQuery } from '@/composables'
+import { useAgentsStore } from '@/store'
 import { FilterChips } from '@/components/ui'
 import { formatTime } from '@/utils'
 
 const { isMobile } = useMediaQuery()
-const filterOptions = ['全部', '笃笃', '故事大王', '今天', '本周']
+const agentsStore = useAgentsStore()
+
+const filterOptions = computed(() => {
+  const names = agentsStore.agents.map((a) => a.name)
+  return ['全部', ...names, '今天', '本周']
+})
 const activeFilter = ref('全部')
 const conversations = ref<ConversationListItem[]>([])
 const selectedConvId = ref<string | null>(null)
@@ -40,6 +46,7 @@ function closeChatPanel() {
 }
 
 onMounted(async () => {
+  await agentsStore.fetchAgents()
   await loadConversations()
   if (!isMobile.value && conversations.value.length > 0) {
     selectConversation(conversations.value[0].id)
@@ -53,14 +60,17 @@ watch(activeFilter, () => {
 
 <template>
   <!-- Desktop Layout -->
-  <div v-if="!isMobile" class="grid grid-cols-[340px_1fr] gap-5" style="height: calc(100vh - 60px - 48px)">
-    <div class="bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col overflow-hidden">
+  <div
+    v-if="!isMobile"
+    class="grid grid-cols-[340px_1fr] gap-5"
+    style="height: calc(100vh - 60px - 48px)"
+  >
+    <div
+      class="bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col overflow-hidden"
+    >
       <div class="px-5 pt-4 pb-3 border-b border-[var(--border)] shrink-0">
         <div class="text-[15px] font-extrabold text-[var(--text1)] mb-2.5">对话列表</div>
-        <FilterChips
-          v-model="activeFilter"
-          :chips="filterOptions"
-        />
+        <FilterChips v-model="activeFilter" :chips="filterOptions" />
       </div>
 
       <div class="flex-1 overflow-y-auto p-3">
@@ -80,30 +90,45 @@ watch(activeFilter, () => {
             ]"
             @click="selectConversation(conv.id)"
           >
-            <div
-              class="w-1 h-9 rounded-[2px] shrink-0"
-              :style="{ background: conv.accentColor }"
-            />
+            <div class="w-1 h-9 rounded-[2px] shrink-0" :style="{ background: conv.accentColor }" />
             <div
               class="w-[38px] h-[38px] rounded-xl flex items-center justify-center text-lg shrink-0"
-              :style="{ background: conv.accentColor === 'var(--teal)' ? '#e8fdf5' : conv.accentColor === 'var(--indigo)' ? '#eef0fc' : conv.accentColor === 'var(--amber)' ? '#fff8e6' : '#fff0f0' }"
+              :style="{
+                background:
+                  conv.accentColor === 'var(--teal)'
+                    ? '#e8fdf5'
+                    : conv.accentColor === 'var(--indigo)'
+                      ? '#eef0fc'
+                      : conv.accentColor === 'var(--amber)'
+                        ? '#fff8e6'
+                        : '#fff0f0',
+              }"
             >
               {{ conv.agentEmoji }}
             </div>
             <div class="flex-1 min-w-0">
-              <div class="text-[13px] font-bold text-[var(--text1)] whitespace-nowrap overflow-hidden text-ellipsis">{{ conv.title }}</div>
-              <div class="text-[11px] text-[var(--text3)] whitespace-nowrap overflow-hidden text-ellipsis mt-0.5">{{ conv.preview }}</div>
+              <div
+                class="text-[13px] font-bold text-[var(--text1)] whitespace-nowrap overflow-hidden text-ellipsis"
+              >
+                {{ conv.title }}
+              </div>
+              <div
+                class="text-[11px] text-[var(--text3)] whitespace-nowrap overflow-hidden text-ellipsis mt-0.5"
+              >
+                {{ conv.preview }}
+              </div>
             </div>
             <div class="text-right shrink-0">
               <div class="text-[11px] text-[var(--text3)] mb-1">{{ conv.time }}</div>
-              <span class="text-[10px] font-extrabold bg-[var(--coral)] text-white rounded-[10px] px-1.5 py-px inline-block">{{ conv.messageCount }}</span>
             </div>
           </div>
         </template>
       </div>
     </div>
 
-    <div class="bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col overflow-hidden">
+    <div
+      class="bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border)] shadow-[var(--shadow-sm)] flex flex-col overflow-hidden"
+    >
       <template v-if="selectedConv">
         <div class="flex items-center gap-3 px-5 py-4 border-b border-[var(--border)] shrink-0">
           <div
@@ -113,7 +138,9 @@ watch(activeFilter, () => {
             {{ selectedConv.agentEmoji }}
           </div>
           <div>
-            <div class="text-[15px] font-extrabold text-[var(--text1)]">{{ selectedConv.title }}</div>
+            <div class="text-[15px] font-extrabold text-[var(--text1)]">
+              {{ selectedConv.title }}
+            </div>
             <div class="text-xs text-[var(--text3)] mt-px">{{ selectedConv.meta }}</div>
           </div>
         </div>
@@ -146,11 +173,17 @@ watch(activeFilter, () => {
         </div>
       </template>
 
-      <div v-else-if="loadingConv" class="flex-1 flex items-center justify-center text-[var(--text3)] text-sm font-semibold">
+      <div
+        v-else-if="loadingConv"
+        class="flex-1 flex items-center justify-center text-[var(--text3)] text-sm font-semibold"
+      >
         加载中…
       </div>
 
-      <div v-else class="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text3)]">
+      <div
+        v-else
+        class="flex-1 flex flex-col items-center justify-center gap-3 text-[var(--text3)]"
+      >
         <div class="text-5xl opacity-40">💬</div>
         <div class="text-sm font-semibold">请选择一个对话</div>
       </div>
@@ -165,7 +198,9 @@ watch(activeFilter, () => {
         :key="opt"
         :class="[
           'py-1.5 px-3.5 rounded-[20px] text-xs font-bold whitespace-nowrap cursor-pointer transition-all duration-200',
-          activeFilter === opt ? 'bg-[var(--coral)] text-white' : 'bg-[var(--surface)] text-[var(--text2)] shadow-[var(--shadow-sm)]',
+          activeFilter === opt
+            ? 'bg-[var(--coral)] text-white'
+            : 'bg-[var(--surface)] text-[var(--text2)] shadow-[var(--shadow-sm)]',
         ]"
         @click="activeFilter = opt"
       >
@@ -191,17 +226,33 @@ watch(activeFilter, () => {
           />
           <div
             class="w-[42px] h-[42px] rounded-[14px] flex items-center justify-center text-xl shrink-0"
-            :style="{ background: conv.accentColor === 'var(--teal)' ? '#e8fdf5' : conv.accentColor === 'var(--indigo)' ? '#eef0fc' : conv.accentColor === 'var(--amber)' ? '#fff8e6' : '#fff0f0' }"
+            :style="{
+              background:
+                conv.accentColor === 'var(--teal)'
+                  ? '#e8fdf5'
+                  : conv.accentColor === 'var(--indigo)'
+                    ? '#eef0fc'
+                    : conv.accentColor === 'var(--amber)'
+                      ? '#fff8e6'
+                      : '#fff0f0',
+            }"
           >
             {{ conv.agentEmoji }}
           </div>
           <div class="flex-1 min-w-0">
-            <div class="text-sm font-extrabold text-[var(--text1)] mb-[3px] whitespace-nowrap overflow-hidden text-ellipsis">{{ conv.title }}</div>
-            <div class="text-xs text-[var(--text3)] whitespace-nowrap overflow-hidden text-ellipsis">{{ conv.preview }}</div>
+            <div
+              class="text-sm font-extrabold text-[var(--text1)] mb-[3px] whitespace-nowrap overflow-hidden text-ellipsis"
+            >
+              {{ conv.title }}
+            </div>
+            <div
+              class="text-xs text-[var(--text3)] whitespace-nowrap overflow-hidden text-ellipsis"
+            >
+              {{ conv.preview }}
+            </div>
           </div>
           <div class="text-right shrink-0">
             <div class="text-[11px] text-[var(--text3)] mb-1">{{ conv.time }}</div>
-            <span class="text-[10px] font-extrabold bg-[var(--coral)] text-white rounded-[10px] px-1.5 py-0.5">{{ conv.messageCount }}</span>
           </div>
         </div>
       </template>
@@ -209,7 +260,9 @@ watch(activeFilter, () => {
 
     <Transition name="slide">
       <div v-if="showChatPanel" class="fixed inset-0 z-50 bg-[var(--bg)] flex flex-col">
-        <div class="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--border)] bg-white/90 backdrop-blur-[12px] shrink-0">
+        <div
+          class="flex items-center gap-3 px-4 py-3.5 border-b border-[var(--border)] bg-white/90 backdrop-blur-[12px] shrink-0"
+        >
           <button
             class="w-9 h-9 rounded-full bg-[var(--bg2)] border-none flex items-center justify-center text-lg text-[var(--text1)] cursor-pointer shrink-0 transition-all duration-200 active:scale-[.92]"
             @click="closeChatPanel"
@@ -222,7 +275,10 @@ watch(activeFilter, () => {
           </div>
         </div>
 
-        <div v-if="selectedConv" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-[var(--bg)]">
+        <div
+          v-if="selectedConv"
+          class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 bg-[var(--bg)]"
+        >
           <div
             v-for="msg in selectedConv.messages"
             :key="msg.id"
@@ -249,7 +305,10 @@ watch(activeFilter, () => {
           </div>
         </div>
 
-        <div v-else class="flex-1 flex items-center justify-center text-[var(--text3)] text-sm font-semibold">
+        <div
+          v-else
+          class="flex-1 flex items-center justify-center text-[var(--text3)] text-sm font-semibold"
+        >
           加载中…
         </div>
       </div>
@@ -259,16 +318,28 @@ watch(activeFilter, () => {
 
 <style scoped>
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 @keyframes msgIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .slide-enter-active,
 .slide-leave-active {
-  transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .slide-enter-from {
   transform: translateX(100%);

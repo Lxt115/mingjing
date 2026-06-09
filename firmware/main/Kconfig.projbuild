@@ -1,0 +1,51 @@
+menu "Aidoll Device Configuration"
+
+config DEVICE_WIFI_SSID
+    string "WiFi SSID"
+    default "YOUR_WIFI_SSID"
+    help
+        The SSID of the Wi-Fi network to connect to.
+
+config DEVICE_WIFI_PASSWORD
+    string "WiFi Password"
+    default "YOUR_WIFI_PASSWORD"
+    help
+        The password of the Wi-Fi network.
+
+config DEVICE_AGENT_ID
+    string "Agent ID"
+    default "c3000000-0000-0000-0000-000000000001"
+    help
+        The UUID of the AI agent to connect to.
+
+config DEVICE_SERVER_HOST
+    string "Server Host"
+    default "192.168.1.100"
+    help
+        IP address or hostname of the backend server.
+
+config DEVICE_SERVER_PORT
+    string "Server Port"
+    default "8000"
+    help
+        Port number of the backend server (WebSocket).
+
+choice DEVICE_MIC_TYPE
+    prompt "Microphone Type"
+    default DEVICE_MIC_TYPE_I2S
+    help
+        Select the type of microphone connected to the device.
+
+config DEVICE_MIC_TYPE_I2S
+    bool "I2S Digital Mic (INMP441 etc.)"
+    help
+        Uses I2S interface on GPIO 4(BCK)/5(WS)/6(DIN).
+
+config DEVICE_MIC_TYPE_ADC
+    bool "ADC Analog Mic (on GPIO1)"
+    help
+        Uses ESP32-C3 ADC1 channel 1 on GPIO1.
+
+endchoice
+
+endmenu

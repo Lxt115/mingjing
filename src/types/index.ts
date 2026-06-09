@@ -14,6 +14,7 @@ export type {
   Device,
   Voice,
   KnowledgeBase,
+  KnowledgeDetail,
   VoiceprintSpeaker,
   ConversationListItem,
   Message,

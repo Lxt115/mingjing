@@ -1,0 +1,3247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>明境</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --coral:    #FF6B6B;
+      --coral-lt: #FF8E8E;
+      --teal:     #00C9A7;
+      --teal-lt:  #6EECD6;
+      --amber:    #FFB830;
+      --amber-lt: #FFD980;
+      --indigo:   #5C6BC0;
+      --indigo-lt:#7986CB;
+      --surface:  #FFFFFF;
+      --bg:       #F4F6FA;
+      --bg2:      #ECEEF4;
+      --text1:    #1A1D2E;
+      --text2:    #6B7280;
+      --text3:    #A0A8B5;
+      --border:   #E5E9F2;
+      --shadow-sm: 0 2px 8px rgba(26,29,46,.07);
+      --shadow-md: 0 6px 24px rgba(26,29,46,.10);
+      --shadow-lg: 0 16px 48px rgba(26,29,46,.13);
+      --radius-sm: 12px;
+      --radius-md: 18px;
+      --radius-lg: 24px;
+      --radius-xl: 32px;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+    body {
+      font-family: 'Nunito', 'PingFang SC', 'Helvetica Neue', sans-serif;
+      background: radial-gradient(ellipse at 20% 10%, #e0f7fa 0%, #f8f0ff 40%, #fff5e6 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 12px;
+    }
+
+    /* ── Phone Shell ── */
+    .phone {
+      width: 390px;
+      height: 844px;
+      background: var(--bg);
+      border-radius: 48px;
+      overflow: hidden;
+      position: relative;
+      box-shadow:
+        0 0 0 1px rgba(0,0,0,.08),
+        0 2px 4px rgba(0,0,0,.06),
+        0 24px 64px rgba(0,0,0,.18),
+        inset 0 0 0 1px rgba(255,255,255,.6);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Notch */
+    .notch {
+      position: absolute;
+      top: 0; left: 50%; transform: translateX(-50%);
+      width: 120px; height: 28px;
+      background: #111;
+      border-radius: 0 0 20px 20px;
+      z-index: 999;
+    }
+
+    /* ── Status Bar ── */
+    .statusbar {
+      height: 44px;
+      padding: 14px 28px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+      z-index: 10;
+      flex-shrink: 0;
+    }
+    .statusbar .time { font-size: 13px; font-weight: 800; color: var(--text1); }
+    .statusbar .icons { display:flex; gap:4px; align-items:center; }
+    .statusbar .icons span { font-size:11px; color:var(--text1); font-weight:700; }
+
+    /* ── Pages Container ── */
+    .pages { flex:1; overflow:hidden; position:relative; }
+    .page { display:none; height:100%; overflow:hidden; flex-direction:column; }
+    .page.active { display:flex; animation: pageIn .3s cubic-bezier(.4,0,.2,1); }
+    /* Inner scroll wrapper — all non-header content scrolls here */
+    .page-scroll {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .page-scroll::-webkit-scrollbar { width: 3px; }
+    .page-scroll::-webkit-scrollbar-track { background: transparent; }
+    .page-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+    @keyframes pageIn {
+      from { opacity:0; transform:translateY(12px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    /* ── Scrollbar ── */
+    .page::-webkit-scrollbar { width:3px; }
+    .page::-webkit-scrollbar-track { background:transparent; }
+    .page::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+    /* ── Sub-pages (slide panels) ── */
+    .subpage {
+      position:absolute; inset:0;
+      background:var(--bg);
+      transform: translateX(100%);
+      transition: transform .35s cubic-bezier(.4,0,.2,1);
+      z-index:50;
+      display:flex; flex-direction:column;
+      overflow-y:auto;
+    }
+    .subpage.open { transform: translateX(0); }
+
+    /* ── Header ── */
+    .header {
+      padding: 16px 20px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(244,246,250,.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .header-left { display:flex; flex-direction:column; gap:2px; }
+    .header-label { font-size:11px; color:var(--text3); font-weight:700; letter-spacing:.8px; text-transform:uppercase; }
+    .header-title { font-size:20px; font-weight:900; color:var(--text1); }
+    .header-right { display:flex; gap:8px; align-items:center; }
+    .icon-btn {
+      width:36px; height:36px;
+      border-radius:50%;
+      background:var(--surface);
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer;
+      box-shadow:var(--shadow-sm);
+      border:none;
+      font-size:16px;
+      transition: all .2s;
+    }
+    .icon-btn:active { transform:scale(.92); }
+
+    /* ── Bottom Nav ── */
+    .bottom-nav {
+      height: 72px;
+      background: rgba(255,255,255,.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      flex-shrink: 0;
+      padding-bottom: 6px;
+    }
+    .nav-item {
+      flex:1; display:flex; flex-direction:column; align-items:center;
+      gap:4px; cursor:pointer; padding:6px 0;
+      transition: all .2s;
+    }
+    .nav-item .nav-icon {
+      width:28px; height:28px;
+      border-radius:10px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:16px;
+      transition: all .25s;
+    }
+    .nav-item .nav-label { font-size:10px; font-weight:700; color:var(--text3); letter-spacing:.3px; }
+    .nav-item.active .nav-icon { background:var(--coral); transform:scale(1.08); }
+    .nav-item.active .nav-label { color:var(--coral); }
+    .nav-item:not(.active) .nav-icon { background:var(--bg2); }
+
+    /* ── Section Title ── */
+    .section-title {
+      font-size:12px; font-weight:800;
+      color:var(--text3); letter-spacing:.8px; text-transform:uppercase;
+      padding: 20px 20px 8px;
+    }
+
+    /* ── Pill Badge ── */
+    .badge {
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:2px 8px; border-radius:20px;
+      font-size:10px; font-weight:800; letter-spacing:.3px;
+    }
+    .badge-green  { background:#e8fdf5; color:#00C9A7; }
+    .badge-red    { background:#fff0f0; color:#FF6B6B; }
+    .badge-amber  { background:#fff8e6; color:#FFB830; }
+    .badge-indigo { background:#eef0fc; color:#5C6BC0; }
+
+    /* ── Cards ── */
+    .card {
+      background:var(--surface);
+      border-radius:var(--radius-md);
+      box-shadow:var(--shadow-sm);
+      margin: 0 16px 12px;
+      overflow:hidden;
+    }
+    .card-body { padding:16px; }
+
+    /* ── Toggle ── */
+    .toggle {
+      width:46px; height:26px;
+      background:var(--bg2); border-radius:13px;
+      position:relative; cursor:pointer; transition:background .25s; flex-shrink:0;
+    }
+    .toggle::after {
+      content:''; position:absolute;
+      width:20px; height:20px; border-radius:50%;
+      background:white; top:3px; left:3px;
+      transition:transform .25s; box-shadow:0 1px 4px rgba(0,0,0,.2);
+    }
+    .toggle.on { background:var(--teal); }
+    .toggle.on::after { transform:translateX(20px); }
+
+    /* ── Row ── */
+    .row {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 16px;
+      border-bottom:1px solid var(--border);
+    }
+    .row:last-child { border-bottom:none; }
+    .row-left { display:flex; align-items:center; gap:10px; }
+    .row-icon { width:32px; height:32px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:15px; }
+    .row-text .label { font-size:14px; font-weight:700; color:var(--text1); }
+    .row-text .sub   { font-size:12px; color:var(--text3); margin-top:1px; }
+    .row-right { display:flex; align-items:center; gap:6px; color:var(--text3); font-size:13px; }
+    .chevron { color:var(--text3); font-size:14px; }
+
+    /* ── Primary Button ── */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--coral) 0%, #FF8E53 100%);
+      color:white; border:none; border-radius:var(--radius-sm);
+      padding:12px 20px; font-size:14px; font-weight:800;
+      cursor:pointer; width:100%; text-align:center;
+      box-shadow:0 4px 16px rgba(255,107,107,.35);
+      transition:all .2s; display:block;
+    }
+    .btn-primary:active { transform:scale(.97); }
+    .btn-secondary {
+      background:var(--bg2); color:var(--text1);
+      border:none; border-radius:var(--radius-sm);
+      padding:12px 20px; font-size:14px; font-weight:700;
+      cursor:pointer; width:100%; text-align:center;
+      transition:all .2s; display:block;
+    }
+    .btn-secondary:active { transform:scale(.97); }
+    .btn-row { display:flex; gap:10px; padding:0 16px 16px; }
+    .btn-row .btn-primary, .btn-row .btn-secondary { flex:1; }
+
+    /* ── Input ── */
+    .form-group { padding:0 16px 16px; }
+    .form-group label { display:block; font-size:12px; font-weight:800; color:var(--text2); letter-spacing:.5px; text-transform:uppercase; margin-bottom:8px; }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width:100%; padding:12px 14px;
+      border:1.5px solid var(--border); border-radius:var(--radius-sm);
+      font-size:14px; font-family:inherit; color:var(--text1);
+      background:var(--bg); transition:border-color .2s, box-shadow .2s;
+      outline:none;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      border-color:var(--coral);
+      box-shadow:0 0 0 3px rgba(255,107,107,.12);
+      background:white;
+    }
+    .form-group textarea { resize:none; min-height:90px; }
+
+    /* ── Slider ── */
+    input[type=range] {
+      -webkit-appearance:none; width:100%; height:6px;
+      border-radius:3px; background:var(--bg2); outline:none;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance:none; width:22px; height:22px;
+      border-radius:50%; background:var(--coral);
+      cursor:pointer; box-shadow:0 2px 8px rgba(255,107,107,.4);
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position:fixed; inset:0;
+      background:rgba(26,29,46,.5);
+      backdrop-filter:blur(4px);
+      z-index:200;
+      opacity:0; pointer-events:none;
+      transition:opacity .25s;
+      display:flex; align-items:flex-end; justify-content:center;
+    }
+    .modal-overlay.open { opacity:1; pointer-events:auto; }
+    .modal-sheet {
+      background:var(--surface);
+      border-radius:28px 28px 0 0;
+      width:100%; max-width:390px;
+      padding-bottom:32px;
+      transform:translateY(100%);
+      transition:transform .3s cubic-bezier(.4,0,.2,1);
+      max-height:88vh;
+      overflow-y:auto;
+    }
+    .modal-overlay.open .modal-sheet { transform:translateY(0); }
+    .modal-handle { width:36px; height:4px; background:var(--border); border-radius:2px; margin:12px auto 4px; }
+    .modal-header-bar {
+      padding:12px 20px 16px;
+      display:flex; align-items:center; justify-content:space-between;
+      border-bottom:1px solid var(--border);
+    }
+    .modal-header-bar h3 { font-size:17px; font-weight:800; color:var(--text1); }
+    .modal-close {
+      width:28px; height:28px; border-radius:50%; background:var(--bg2);
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; font-size:16px; color:var(--text2);
+      border:none;
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position:fixed; top:60px; left:50%; transform:translateX(-50%) translateY(-16px);
+      background:var(--text1); color:white;
+      padding:10px 20px; border-radius:20px;
+      font-size:13px; font-weight:700;
+      z-index:1000; opacity:0;
+      transition:all .3s; white-space:nowrap;
+      pointer-events:none;
+    }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+    /* ══════════════════════════════════════
+       PAGE: 角色 (Agents)
+    ══════════════════════════════════════ */
+    .agent-hero {
+      margin:16px 16px 0;
+      border-radius:var(--radius-xl);
+      background:linear-gradient(135deg, #FF6B6B 0%, #FF8E53 50%, #FFB830 100%);
+      padding:24px;
+      position:relative;
+      overflow:hidden;
+      color:white;
+      box-shadow:0 8px 32px rgba(255,107,107,.3);
+    }
+    .agent-hero::before {
+      content:'';
+      position:absolute; top:-30px; right:-30px;
+      width:160px; height:160px;
+      border-radius:50%;
+      background:rgba(255,255,255,.12);
+    }
+    .agent-hero::after {
+      content:'';
+      position:absolute; bottom:-20px; left:30px;
+      width:80px; height:80px;
+      border-radius:50%;
+      background:rgba(255,255,255,.08);
+    }
+    .agent-hero-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+    .agent-avatar {
+      width:56px; height:56px; border-radius:20px;
+      background:rgba(255,255,255,.25);
+      display:flex; align-items:center; justify-content:center;
+      font-size:28px;
+      border:2px solid rgba(255,255,255,.4);
+    }
+    .agent-status { display:flex; align-items:center; gap:5px; font-size:11px; font-weight:800; opacity:.95; letter-spacing:.5px; }
+    .status-dot { width:7px; height:7px; border-radius:50%; background:#B8FFE8; animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.5;} }
+    .agent-name { font-size:22px; font-weight:900; margin-bottom:4px; }
+    .agent-desc { font-size:13px; opacity:.85; line-height:1.5; margin-bottom:16px; }
+    .agent-tags { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:18px; }
+    .agent-tag {
+      background:rgba(255,255,255,.25); color:white;
+      padding:4px 10px; border-radius:20px;
+      font-size:11px; font-weight:700;
+    }
+    .agent-btns { display:flex; gap:8px; position:relative; z-index:1; }
+    .agent-btn {
+      flex:1; padding:10px 0; border-radius:var(--radius-sm);
+      font-size:13px; font-weight:800; text-align:center; cursor:pointer;
+      border:none; transition:all .2s;
+    }
+    .agent-btn.white { background:white; color:var(--coral); box-shadow:0 2px 8px rgba(0,0,0,.15); }
+    .agent-btn.outline { background:rgba(255,255,255,.2); color:white; border:1.5px solid rgba(255,255,255,.5); }
+    .agent-btn:active { transform:scale(.96); }
+
+
+
+    /* ══════════════════════════════════════
+       PAGE: 历史 (History)
+    ══════════════════════════════════════ */
+    .history-filter {
+      display:flex; gap:6px; padding:12px 16px;
+      overflow-x:auto; flex-shrink:0;
+    }
+    .history-filter::-webkit-scrollbar { display:none; }
+    .filter-chip {
+      padding:6px 14px; border-radius:20px;
+      font-size:12px; font-weight:700; white-space:nowrap; cursor:pointer;
+      transition:all .2s;
+    }
+    .filter-chip.active { background:var(--coral); color:white; }
+    .filter-chip:not(.active) { background:var(--surface); color:var(--text2); box-shadow:var(--shadow-sm); }
+
+    .history-item {
+      margin:0 16px 10px;
+      background:var(--surface);
+      border-radius:var(--radius-md);
+      padding:14px 16px;
+      display:flex; align-items:center; gap:12px;
+      cursor:pointer;
+      box-shadow:var(--shadow-sm);
+      transition:all .2s;
+      position:relative;
+      overflow:hidden;
+    }
+    .history-item:active { transform:scale(.98); }
+    .history-item-accent {
+      position:absolute; left:0; top:0; bottom:0;
+      width:4px;
+    }
+    .history-avatar {
+      width:42px; height:42px; border-radius:14px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:20px; flex-shrink:0;
+    }
+    .history-info { flex:1; min-width:0; }
+    .history-title { font-size:14px; font-weight:800; color:var(--text1); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .history-preview { font-size:12px; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .history-meta { text-align:right; flex-shrink:0; }
+    .history-time { font-size:11px; color:var(--text3); margin-bottom:4px; }
+    .history-count { font-size:10px; font-weight:800; background:var(--coral); color:white; border-radius:10px; padding:1px 6px; }
+
+    /* Conversation Detail */
+    .chat-messages { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; background:var(--bg); }
+    .msg { display:flex; flex-direction:column; max-width:78%; animation:msgIn .25s ease; }
+    @keyframes msgIn { from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
+    .msg.user { align-self:flex-end; align-items:flex-end; }
+    .msg.ai   { align-self:flex-start; align-items:flex-start; }
+    .msg-bubble {
+      padding:11px 14px; border-radius:18px; font-size:14px; line-height:1.55;
+      font-weight:600;
+    }
+    .msg.user .msg-bubble { background:var(--coral); color:white; border-bottom-right-radius:4px; }
+    .msg.ai   .msg-bubble { background:var(--surface); color:var(--text1); border-bottom-left-radius:4px; box-shadow:var(--shadow-sm); }
+    .msg-time { font-size:10px; color:var(--text3); margin-top:4px; padding:0 4px; }
+
+    /* ══════════════════════════════════════
+       PAGE: 我的 (Mine)
+    ══════════════════════════════════════ */
+    .profile-header {
+      background:linear-gradient(135deg, #5C6BC0 0%, #00C9A7 100%);
+      padding:28px 20px 32px; position:relative; overflow:hidden;
+    }
+    .profile-header::before {
+      content:''; position:absolute; top:-40px; right:-40px;
+      width:180px; height:180px; border-radius:50%;
+      background:rgba(255,255,255,.1);
+    }
+    .profile-user { display:flex; align-items:center; gap:14px; margin-bottom:20px; }
+    .profile-avatar {
+      width:64px; height:64px; border-radius:22px;
+      background:rgba(255,255,255,.2);
+      display:flex; align-items:center; justify-content:center;
+      font-size:32px; border:2px solid rgba(255,255,255,.4);
+    }
+    .profile-name { font-size:20px; font-weight:900; color:white; }
+    .profile-id   { font-size:12px; color:rgba(255,255,255,.7); margin-top:2px; font-weight:600; }
+    .profile-stats {
+      display:flex; gap:0;
+      background:rgba(255,255,255,.15); border-radius:var(--radius-md);
+      overflow:hidden;
+    }
+    .stat-item { flex:1; padding:12px 0; text-align:center; position:relative; }
+    .stat-item+.stat-item::before { content:''; position:absolute; left:0; top:20%; bottom:20%; width:1px; background:rgba(255,255,255,.25); }
+    .stat-num  { font-size:20px; font-weight:900; color:white; }
+    .stat-label{ font-size:10px; color:rgba(255,255,255,.75); font-weight:700; letter-spacing:.5px; margin-top:2px; }
+
+    /* ══════════════════════════════════════
+       SUB-PAGE: 角色配置
+    ══════════════════════════════════════ */
+    .sub-header {
+      display:flex; align-items:center; gap:12px;
+      padding:14px 16px;
+      border-bottom:1px solid var(--border);
+      background:rgba(244,246,250,.9);
+      backdrop-filter:blur(12px);
+      flex-shrink:0;
+    }
+    .back-btn {
+      width:36px; height:36px; border-radius:50%;
+      background:var(--bg2); border:none; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      font-size:18px; color:var(--text1); flex-shrink:0;
+      transition:all .2s;
+    }
+    .back-btn:active { transform:scale(.92); background:var(--border); }
+    .sub-title { font-size:17px; font-weight:900; color:var(--text1); }
+    .sub-subtitle { font-size:11px; color:var(--text3); font-weight:600; }
+
+    /* Tabs inside subpage */
+    .tab-bar {
+      display:flex; border-bottom:1px solid var(--border);
+      background:var(--surface); flex-shrink:0;
+    }
+    .tab {
+      flex:1; padding:12px 0; text-align:center;
+      font-size:13px; font-weight:700; color:var(--text3);
+      cursor:pointer; border-bottom:2px solid transparent;
+      transition:all .2s;
+    }
+    .tab.active { color:var(--coral); border-bottom-color:var(--coral); }
+
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+
+    /* Tone row */
+    .tone-row { padding:12px 16px 16px; }
+    .tone-row label { display:block; font-size:12px; font-weight:800; color:var(--text2); letter-spacing:.5px; text-transform:uppercase; margin-bottom:10px; }
+    .tone-ends { display:flex; justify-content:space-between; font-size:11px; color:var(--text3); margin-top:6px; font-weight:700; }
+
+    /* Service chips */
+    .chips-area { padding:0 16px 16px; display:flex; flex-wrap:wrap; gap:8px; }
+    .chip {
+      padding:7px 14px; border-radius:20px;
+      font-size:12px; font-weight:700; cursor:pointer;
+      border:1.5px solid var(--border); color:var(--text2);
+      background:var(--surface); transition:all .2s;
+    }
+    .chip.active { background:var(--teal); color:white; border-color:var(--teal); box-shadow:0 2px 8px rgba(0,201,167,.3); }
+    .chip.add { border-style:dashed; color:var(--text3); }
+    .chip:active { transform:scale(.95); }
+
+    /* ══════════════════════════════════════
+       SUB-PAGE: 声纹识别
+    ══════════════════════════════════════ */
+    .voice-card {
+      margin:0 16px 10px;
+      background:var(--surface);
+      border-radius:var(--radius-md);
+      box-shadow:var(--shadow-sm);
+      padding:14px 16px;
+      display:flex; align-items:center; gap:12px;
+    }
+    .voice-avatar {
+      width:44px; height:44px; border-radius:15px;
+      background:linear-gradient(135deg,var(--indigo-lt),var(--indigo));
+      display:flex; align-items:center; justify-content:center;
+      font-size:22px; flex-shrink:0;
+    }
+    .voice-info { flex:1; }
+    .voice-name { font-size:14px; font-weight:800; color:var(--text1); }
+    .voice-sub  { font-size:12px; color:var(--text3); margin-top:2px; }
+    .voice-actions { display:flex; gap:6px; }
+    .act-btn {
+      width:32px; height:32px; border-radius:10px;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; font-size:14px; border:none;
+      transition:all .2s;
+    }
+    .act-btn:active { transform:scale(.9); }
+    .act-btn.edit   { background:#eef0fc; color:var(--indigo); }
+    .act-btn.delete { background:#fff0f0; color:var(--coral); }
+
+    /* ══════════════════════════════════════
+       SUB-PAGE: 设备管理
+    ══════════════════════════════════════ */
+    .device-hero {
+      margin:16px;
+      border-radius:var(--radius-xl);
+      background:linear-gradient(135deg,var(--teal) 0%,#0AB4EE 100%);
+      padding:20px;
+      color:white;
+      box-shadow:0 8px 28px rgba(0,201,167,.3);
+      position:relative; overflow:hidden;
+    }
+    .device-hero::before {
+      content:''; position:absolute; right:-20px; top:-20px;
+      width:120px; height:120px; border-radius:50%;
+      background:rgba(255,255,255,.12);
+    }
+    .device-hero-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+    .device-icon { width:48px; height:48px; border-radius:16px; background:rgba(255,255,255,.2); display:flex; align-items:center; justify-content:center; font-size:24px; }
+    .device-online { display:flex; align-items:center; gap:5px; font-size:11px; font-weight:800; }
+    .d-dot { width:7px; height:7px; border-radius:50%; background:#B8FFE8; }
+    .device-name { font-size:18px; font-weight:900; margin-bottom:4px; }
+    .device-id   { font-size:12px; opacity:.8; }
+    .device-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:14px; }
+    .device-stat { background:rgba(255,255,255,.18); border-radius:12px; padding:10px 8px; text-align:center; }
+    .device-stat .num  { font-size:16px; font-weight:900; }
+    .device-stat .lbl  { font-size:10px; opacity:.8; margin-top:2px; font-weight:700; }
+
+    /* Mini chart */
+    .mini-chart { padding:16px; }
+    .mini-chart .chart-title { font-size:13px; font-weight:800; color:var(--text1); margin-bottom:10px; }
+    .chart-bars { display:flex; align-items:flex-end; gap:5px; height:60px; }
+    .bar {
+      flex:1; border-radius:4px 4px 0 0;
+      background:linear-gradient(180deg,var(--teal-lt),var(--teal));
+      transition:height .5s cubic-bezier(.4,0,.2,1);
+    }
+    .bar.dim { opacity:.35; }
+    .chart-days { display:flex; gap:5px; margin-top:6px; }
+    .chart-days span { flex:1; text-align:center; font-size:10px; color:var(--text3); font-weight:700; }
+
+    /* ══════════════════════════════════════
+       EMPTY STATE
+    ══════════════════════════════════════ */
+    .empty { display:flex; flex-direction:column; align-items:center; padding:48px 20px; color:var(--text3); }
+    .empty-icon { font-size:48px; margin-bottom:12px; }
+    .empty-text { font-size:14px; font-weight:700; text-align:center; }
+
+    /* ══════════════════════════════════════
+       MISC UTILITIES
+    ══════════════════════════════════════ */
+    .divider { height:1px; background:var(--border); margin:0 16px; }
+    .spacer-8  { height:8px; flex-shrink:0; }
+    .spacer-16 { height:16px; flex-shrink:0; }
+    .info-tip {
+      margin:0 16px 12px;
+      background:#fffbec; border-radius:var(--radius-sm);
+      padding:10px 14px; font-size:12px; color:#9a7a00; font-weight:600;
+      border-left:3px solid var(--amber);
+    }
+
+    /* ══════════════════════════════════════
+       AGENT CARD LIST
+    ══════════════════════════════════════ */
+    .agent-list {
+      padding: 16px 16px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .agent-card-item {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      border: 1.5px solid transparent;
+      transition: all .22s cubic-bezier(.4,0,.2,1);
+      position: relative;
+      overflow: hidden;
+    }
+    .agent-card-item::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 4px;
+      background: var(--border);
+      border-radius: 4px 0 0 4px;
+      transition: background .22s;
+    }
+    .agent-card-item.active-card::before {
+      background: var(--coral);
+    }
+    .agent-card-item.active-card {
+      border-color: rgba(255,107,107,.18);
+      box-shadow: 0 4px 20px rgba(255,107,107,.1);
+    }
+    .agent-card-item:active {
+      transform: scale(.98);
+    }
+
+    .agent-card-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .agent-card-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--coral) 0%, #FF8E53 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    }
+
+    .agent-card-body {
+      flex: 1;
+      min-width: 0;
+    }
+    .agent-card-name {
+      font-size: 16px;
+      font-weight: 900;
+      color: var(--text1);
+      margin-bottom: 3px;
+    }
+    .agent-card-desc {
+      font-size: 12px;
+      color: var(--text3);
+      line-height: 1.5;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .agent-card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    .agent-card-tag {
+      background: var(--bg2);
+      color: var(--text2);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 20px;
+    }
+
+    .agent-card-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .agent-card-status {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--teal);
+    }
+    .agent-card-status.offline {
+      color: var(--text3);
+    }
+    .agent-card-arrow {
+      font-size: 20px;
+      color: var(--text3);
+      line-height: 1;
+    }
+
+    /* ── Device manage button inside agent card ── */
+    .agent-device-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      border: none;
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .agent-device-btn.has-device {
+      background: #e8fdf5;
+      color: var(--teal);
+    }
+    .agent-device-btn.has-device:active { background: #c8f5e8; transform: scale(.95); }
+    .agent-device-btn.no-device {
+      background: #eef0fc;
+      color: var(--indigo);
+    }
+    .agent-device-btn.no-device:active { background: #dde1f8; transform: scale(.95); }
+
+    /* ── Device card (in device manage pages) ── */
+    .dev-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      margin: 0 16px 12px;
+      overflow: hidden;
+      border: 1.5px solid var(--border);
+    }
+    .dev-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid var(--border);
+    }
+    .dev-card-header-left { display: flex; align-items: center; gap: 10px; }
+    .dev-card-icon {
+      width: 40px; height: 40px; border-radius: 14px;
+      background: linear-gradient(135deg, var(--teal), #0AB4EE);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,201,167,.25);
+    }
+    .dev-card-name { font-size: 15px; font-weight: 900; color: var(--text1); }
+    .dev-card-mac  { font-size: 11px; color: var(--text3); margin-top: 2px; font-weight: 600; font-family: monospace; letter-spacing: .3px; }
+    .dev-card-online-badge {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 800;
+      padding: 4px 10px; border-radius: 20px;
+    }
+    .dev-card-online-badge.online  { background: #e8fdf5; color: var(--teal); }
+    .dev-card-online-badge.offline { background: var(--bg2); color: var(--text3); }
+
+    .dev-card-body { padding: 4px 0; }
+
+    .dev-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .dev-row:last-child { border-bottom: none; }
+    .dev-row-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text2);
+    }
+    .dev-row-value {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text1);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dev-row-value.muted { color: var(--text3); }
+
+    .dev-ota-badge {
+      font-size: 10px; font-weight: 800;
+      background: #e8fdf5; color: var(--teal);
+      padding: 2px 8px; border-radius: 10px;
+    }
+    .dev-ota-badge.pending { background: #fff8e6; color: var(--amber); }
+
+    .dev-unbind-btn {
+      width: calc(100% - 32px);
+      margin: 12px 16px 14px;
+      padding: 11px 0;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--coral);
+      background: #fff0f0;
+      color: var(--coral);
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      text-align: center;
+      transition: all .2s;
+      display: block;
+    }
+    .dev-unbind-btn:active { background: var(--coral); color: white; transform: scale(.98); }
+
+    /* ── Role select dropdown for dev card ── */
+    .dev-role-select {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text1);
+      background: var(--bg2);
+      border: none;
+      border-radius: 8px;
+      padding: 4px 10px;
+      cursor: pointer;
+      outline: none;
+      font-family: inherit;
+    }
+
+    /* Add role button */
+    .agent-add-btn {
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius-md);
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all .2s;
+      background: transparent;
+    }
+    .agent-add-btn:active {
+      background: var(--bg2);
+      transform: scale(.98);
+    }
+    .agent-add-icon {
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      background: var(--bg2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; color: var(--text3);
+    }
+    .agent-add-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text3);
+    }
+
+    /* ── Prompt editor ── */
+    .prompt-label-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .prompt-label-row label { margin-bottom: 0; }
+
+    .template-btn {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--indigo);
+      background: #eef0fc;
+      padding: 4px 10px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .template-btn:active { transform: scale(.95); }
+
+    .template-list {
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 10px;
+      animation: fadeSlideDown .2s ease;
+    }
+    .template-list.open { display: flex; }
+
+    @keyframes fadeSlideDown {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .template-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: all .18s;
+    }
+    .template-item:active {
+      border-color: var(--indigo);
+      background: #eef0fc;
+      transform: scale(.98);
+    }
+    .template-item-icon {
+      width: 34px; height: 34px;
+      border-radius: 10px;
+      background: var(--surface);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      box-shadow: var(--shadow-sm);
+      flex-shrink: 0;
+    }
+    .template-item-body { flex: 1; }
+    .template-item-name { font-size: 13px; font-weight: 800; color: var(--text1); }
+    .template-item-desc { font-size: 11px; color: var(--text3); margin-top: 1px; }
+
+    #system-prompt {
+      min-height: 140px;
+      line-height: 1.65;
+    }
+
+    .word-count-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 6px;
+      padding: 0 2px;
+    }
+    .word-count-tip {
+      font-size: 11px;
+      color: var(--text3);
+      font-weight: 600;
+    }
+    .word-count {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--text3);
+      background: var(--bg2);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .word-count.warn { color: var(--amber); background: #fff8e6; }
+    .word-count.over { color: var(--coral); background: #fff0f0; }
+
+    /* ══════════════════════════════════════
+       SOUND LIBRARY
+    ══════════════════════════════════════ */
+
+    /* Clone banner */
+    .voice-clone-banner {
+      margin: 0 16px 12px;
+      background: linear-gradient(135deg, #5C6BC0 0%, #00C9A7 100%);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(92,107,192,.25);
+      transition: all .2s;
+    }
+    .voice-clone-banner:active { transform: scale(.98); }
+    .voice-clone-icon {
+      width: 44px; height: 44px; border-radius: 14px;
+      background: rgba(255,255,255,.2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .voice-clone-body { flex: 1; }
+    .voice-clone-title { font-size: 15px; font-weight: 900; color: white; }
+    .voice-clone-desc  { font-size: 12px; color: rgba(255,255,255,.8); margin-top: 2px; }
+    .voice-clone-arrow { font-size: 22px; color: rgba(255,255,255,.8); }
+
+    /* Sound cards */
+    .sound-card {
+      margin: 0 16px 10px;
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      border: 1.5px solid transparent;
+      transition: all .2s;
+    }
+    .sound-card:active  { transform: scale(.98); }
+    .sound-card.selected {
+      border-color: var(--teal);
+      box-shadow: 0 4px 16px rgba(0,201,167,.15);
+    }
+    .sound-card-left {
+      display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0;
+    }
+    .sound-avatar {
+      width: 44px; height: 44px; border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; font-weight: 900; color: white;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    }
+    .sound-info { flex: 1; min-width: 0; }
+    .sound-name { font-size: 14px; font-weight: 800; color: var(--text1); }
+    .sound-meta { font-size: 12px; color: var(--text3); margin-top: 2px; }
+    .sound-card-right {
+      display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    }
+    .play-btn {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--bg2); border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; color: var(--text2);
+      transition: all .2s;
+    }
+    .play-btn:active { transform: scale(.9); background: var(--teal); color: white; }
+    .sound-check {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--teal); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 900;
+    }
+
+    /* Language section label */
+    .lang-section-label {
+      font-size: 12px; font-weight: 800;
+      color: var(--text3); letter-spacing: .5px;
+      padding: 12px 16px 6px;
+    }
+
+    /* Bottom confirm bar */
+    .sound-confirm-bar {
+      padding: 12px 16px;
+      background: rgba(255,255,255,.95);
+      backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .sound-selected-label {
+      font-size: 13px; font-weight: 700; color: var(--text2);
+      flex: 1;
+    }
+
+    /* ══════════════════════════════════════
+       CLONE VOICE FLOW
+    ══════════════════════════════════════ */
+    .clone-steps {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 16px 0 20px;
+    }
+    .clone-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+    }
+    .clone-step-num {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--bg2); color: var(--text3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 900;
+      transition: all .3s;
+    }
+    .clone-step.active .clone-step-num {
+      background: var(--coral); color: white;
+      box-shadow: 0 3px 10px rgba(255,107,107,.35);
+    }
+    .clone-step.done .clone-step-num {
+      background: var(--teal); color: white;
+    }
+    .clone-step-label {
+      font-size: 10px; font-weight: 700; color: var(--text3);
+    }
+    .clone-step.active .clone-step-label { color: var(--coral); }
+    .clone-step.done  .clone-step-label  { color: var(--teal); }
+    .clone-step-line {
+      width: 40px; height: 2px;
+      background: var(--border); margin: 0 4px; margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+
+    /* Notice card */
+    .clone-notice-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+    .clone-notice-title {
+      font-size: 14px; font-weight: 900; color: var(--text1);
+      margin-bottom: 12px;
+    }
+    .clone-notice-item {
+      font-size: 13px; color: var(--text2); font-weight: 600;
+      padding: 6px 0; border-bottom: 1px solid var(--border);
+      line-height: 1.5;
+    }
+    .clone-notice-item:last-child { border-bottom: none; }
+
+    /* Read text */
+    .clone-text-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 16px;
+    }
+    .clone-text-label {
+      font-size: 11px; font-weight: 800; color: var(--text3);
+      letter-spacing: .6px; text-transform: uppercase; margin-bottom: 10px;
+    }
+    .clone-read-text {
+      font-size: 15px; color: var(--text1); line-height: 1.8;
+      font-weight: 600;
+    }
+
+    /* Record area */
+    .record-area {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 20px 16px 16px;
+      box-shadow: var(--shadow-sm);
+      text-align: center;
+      margin-bottom: 16px;
+    }
+    .record-waves {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      height: 48px;
+      margin-bottom: 10px;
+    }
+    .wave-bar {
+      width: 4px; height: 10px;
+      background: var(--border);
+      border-radius: 2px;
+      transition: height .15s;
+    }
+    .recording .wave-bar {
+      background: var(--coral);
+      animation: waveAnim .6s ease-in-out infinite alternate;
+    }
+    .recording .wave-bar:nth-child(1) { animation-delay: 0s; }
+    .recording .wave-bar:nth-child(2) { animation-delay: .07s; }
+    .recording .wave-bar:nth-child(3) { animation-delay: .14s; }
+    .recording .wave-bar:nth-child(4) { animation-delay: .21s; }
+    .recording .wave-bar:nth-child(5) { animation-delay: .28s; }
+    .recording .wave-bar:nth-child(6) { animation-delay: .21s; }
+    .recording .wave-bar:nth-child(7) { animation-delay: .14s; }
+    .recording .wave-bar:nth-child(8) { animation-delay: .07s; }
+    .recording .wave-bar:nth-child(9) { animation-delay: 0s; }
+    @keyframes waveAnim {
+      from { height: 6px; }
+      to   { height: 36px; }
+    }
+    .record-time {
+      font-size: 28px; font-weight: 900; color: var(--text1);
+      letter-spacing: 1px; margin-bottom: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+    .record-hint { font-size: 12px; color: var(--text3); font-weight: 600; }
+
+    .record-btn-row {
+      display: flex; justify-content: center; margin-bottom: 8px;
+    }
+    .record-btn {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--coral), #FF8E53);
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 20px rgba(255,107,107,.4);
+      transition: all .2s;
+    }
+    .record-btn:active { transform: scale(.93); }
+    .record-btn.recording-active {
+      background: linear-gradient(135deg, #FF3B3B, var(--coral));
+      box-shadow: 0 0 0 8px rgba(255,107,107,.2);
+      animation: recordPulse 1.5s ease infinite;
+    }
+    @keyframes recordPulse {
+      0%,100% { box-shadow: 0 0 0 8px rgba(255,107,107,.2); }
+      50%      { box-shadow: 0 0 0 16px rgba(255,107,107,.08); }
+    }
+    .record-btn-inner { font-size: 28px; }
+    .record-status {
+      text-align: center; font-size: 12px;
+      font-weight: 700; color: var(--text3);
+    }
+
+    /* Generating */
+    .clone-generating {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 32px 0;
+    }
+    .gen-spinner {
+      width: 80px; height: 80px; position: relative; margin-bottom: 20px;
+    }
+    .gen-ring {
+      position: absolute; inset: 0;
+      border: 3px solid var(--border);
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .gen-icon {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+    }
+    .gen-title { font-size: 17px; font-weight: 900; color: var(--text1); margin-bottom: 6px; }
+    .gen-sub   { font-size: 13px; color: var(--text3); margin-bottom: 20px; text-align: center; }
+    .gen-progress-track {
+      width: 100%; height: 6px; background: var(--bg2);
+      border-radius: 3px; overflow: hidden;
+    }
+    .gen-progress-bar {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, var(--teal), var(--indigo));
+      border-radius: 3px;
+      transition: width .4s ease;
+    }
+
+    /* ══════════════════════════════════════
+       KNOWLEDGE BASE
+    ══════════════════════════════════════ */
+    .knowledge-memory-row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin: 0 16px 4px;
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+    }
+
+    .kb-add-btn {
+      flex: 1; padding: 11px 0;
+      background: var(--surface);
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 13px; font-weight: 700; color: var(--text2);
+      cursor: pointer; display: flex; align-items: center;
+      justify-content: center; gap: 6px;
+      transition: all .2s;
+    }
+    .kb-add-btn:active {
+      background: var(--bg2); border-color: var(--teal);
+      color: var(--teal); transform: scale(.97);
+    }
+
+    /* File drop zone */
+    .file-drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-sm);
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .file-drop-zone:active { border-color: var(--coral); background: #fff5f5; }
+    .file-drop-icon { font-size: 32px; margin-bottom: 8px; }
+    .file-drop-text { font-size: 14px; font-weight: 800; color: var(--text1); margin-bottom: 4px; }
+    .file-drop-sub  { font-size: 12px; color: var(--text3); }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════ PHONE ════════════════════ -->
+<div class="phone">
+  <div class="notch"></div>
+
+  <!-- Status Bar -->
+  <div class="statusbar">
+    <span class="time">9:41</span>
+    <div class="icons">
+      <span>WiFi</span>
+      <span>100%</span>
+    </div>
+  </div>
+
+  <!-- Pages -->
+  <div class="pages">
+
+    <!-- ───────────────────────────────────────────
+         PAGE 1: 角色
+    ─────────────────────────────────────────────── -->
+    <div class="page active" id="page-agents">
+      <!-- Header -->
+      <div class="header">
+        <div class="header-left">
+          <span class="header-label">明境</span>
+          <span class="header-title">我的伙伴</span>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn" onclick="openAddDevice()">➕</button>
+        </div>
+      </div>
+
+      <div class="page-scroll">
+      <!-- Agent Cards List -->
+      <div class="agent-list">
+
+        <!-- Card 1: 笃笃 (active) -->
+        <div class="agent-card-item active-card">
+          <div class="agent-card-left" onclick="openSubpage('sub-role-config')" style="cursor:pointer">
+            <div class="agent-card-avatar">🌟</div>
+            <div class="agent-card-body">
+              <div class="agent-card-name">笃笃</div>
+              <div class="agent-card-desc">活泼可爱的学习小伙伴，专注数学和英语启蒙</div>
+              <div class="agent-card-tags">
+                <span class="agent-card-tag">🧮 数学</span>
+                <span class="agent-card-tag">🌍 英语</span>
+                <span class="agent-card-tag">📖 故事</span>
+              </div>
+            </div>
+          </div>
+          <div class="agent-card-right">
+            <button class="agent-device-btn has-device" onclick="event.stopPropagation();openAgentDeviceModal('笃笃')">📱 管理设备（2）</button>
+            <div class="agent-card-arrow" onclick="openSubpage('sub-role-config')" style="cursor:pointer">›</div>
+          </div>
+        </div>
+
+        <!-- Card 2: 故事大王 -->
+        <div class="agent-card-item">
+          <div class="agent-card-left" onclick="openSubpage('sub-role-config')" style="cursor:pointer">
+            <div class="agent-card-avatar" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">🦉</div>
+            <div class="agent-card-body">
+              <div class="agent-card-name">故事大王</div>
+              <div class="agent-card-desc">睡前故事专家，用温柔声音陪伴入眠</div>
+              <div class="agent-card-tags">
+                <span class="agent-card-tag">🌙 睡前故事</span>
+                <span class="agent-card-tag">🐾 动物世界</span>
+              </div>
+            </div>
+          </div>
+          <div class="agent-card-right">
+            <button class="agent-device-btn no-device" onclick="event.stopPropagation();openAddDevice()">➕ 添加设备</button>
+            <div class="agent-card-arrow" onclick="openSubpage('sub-role-config')" style="cursor:pointer">›</div>
+          </div>
+        </div>
+
+        <!-- Add new role -->
+        <div class="agent-add-btn" onclick="openSubpage('sub-new-agent')">
+          <div class="agent-add-icon">＋</div>
+          <div class="agent-add-label">新建角色</div>
+        </div>
+
+      </div>
+
+      <div class="spacer-16"></div>
+      </div><!-- /page-scroll -->
+    </div>
+
+    <!-- ───────────────────────────────────────────
+         PAGE 2: 历史
+    ─────────────────────────────────────────────── -->
+    <div class="page" id="page-history">
+      <div class="header">
+        <div class="header-left">
+          <span class="header-label">对话记录</span>
+          <span class="header-title">历史记录</span>
+        </div>
+        <div class="header-right">
+          <button class="icon-btn">🔍</button>
+        </div>
+      </div>
+
+      <div class="page-scroll">
+      <div class="history-filter">
+        <div class="filter-chip active">全部</div>
+        <div class="filter-chip">笃笃</div>
+        <div class="filter-chip">故事大王</div>
+        <div class="filter-chip">今天</div>
+        <div class="filter-chip">本周</div>
+      </div>
+
+      <div class="section-title">今天</div>
+
+      <div class="history-item" onclick="openConversation('math')">
+        <div class="history-item-accent" style="background:var(--teal)"></div>
+        <div class="history-avatar" style="background:#e8fdf5">🧮</div>
+        <div class="history-info">
+          <div class="history-title">数学思维 · 苹果题</div>
+          <div class="history-preview">小明有12个苹果，给了小红3个…</div>
+        </div>
+        <div class="history-meta">
+          <div class="history-time">14:23</div>
+          <div class="history-count">4</div>
+        </div>
+      </div>
+
+      <div class="history-item" onclick="openConversation('english')">
+        <div class="history-item-accent" style="background:var(--indigo)"></div>
+        <div class="history-avatar" style="background:#eef0fc">🌍</div>
+        <div class="history-info">
+          <div class="history-title">英语启蒙 · 动物单词</div>
+          <div class="history-preview">Cat的发音是/kæt/…</div>
+        </div>
+        <div class="history-meta">
+          <div class="history-time">10:19</div>
+          <div class="history-count">6</div>
+        </div>
+      </div>
+
+      <div class="section-title">昨天</div>
+
+      <div class="history-item" onclick="openConversation('weather')">
+        <div class="history-item-accent" style="background:var(--amber)"></div>
+        <div class="history-avatar" style="background:#fff8e6">☀️</div>
+        <div class="history-info">
+          <div class="history-title">天气与清明节</div>
+          <div class="history-preview">今天天气晴朗，温度18-25度…</div>
+        </div>
+        <div class="history-meta">
+          <div class="history-time">09:48</div>
+          <div class="history-count">6</div>
+        </div>
+      </div>
+
+      <div class="history-item" onclick="showToast('功能开发中…')">
+        <div class="history-item-accent" style="background:var(--coral)"></div>
+        <div class="history-avatar" style="background:#fff0f0">📖</div>
+        <div class="history-info">
+          <div class="history-title">睡前故事 · 小熊和森林</div>
+          <div class="history-preview">从前，在一片大森林里住着…</div>
+        </div>
+        <div class="history-meta">
+          <div class="history-time">20:05</div>
+          <div class="history-count">12</div>
+        </div>
+      </div>
+
+      <div class="spacer-16"></div>
+      </div><!-- /page-scroll -->
+    </div>
+
+    <!-- ───────────────────────────────────────────
+         PAGE 3: 我的
+    ─────────────────────────────────────────────── -->
+    <div class="page" id="page-mine">
+      <div class="page-scroll">
+      <!-- Profile Hero -->
+      <div class="profile-header">
+        <div class="profile-user">
+          <div class="profile-avatar">👨‍👧</div>
+          <div>
+            <div class="profile-name">明境用户</div>
+            <div class="profile-id">ID: MJ-20240405</div>
+          </div>
+        </div>
+        <div class="profile-stats">
+          <div class="stat-item">
+            <div class="stat-num">127</div>
+            <div class="stat-label">对话次数</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">43h</div>
+            <div class="stat-label">陪伴时长</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">2</div>
+            <div class="stat-label">绑定设备</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="section-title">设备与绑定</div>
+      <div class="card">
+        <div class="row" onclick="openSubpage('sub-device')" style="cursor:pointer">
+          <div class="row-left">
+            <div class="row-icon" style="background:#e8fdf5">📱</div>
+            <div class="row-text"><div class="label">管理设备</div><div class="sub">已绑定 2 台 · 1 台在线</div></div>
+          </div>
+          <div class="row-right"><span class="badge badge-green">2 台</span><span class="chevron">›</span></div>
+        </div>
+        <div class="row" onclick="openAddDevice()" style="cursor:pointer">
+          <div class="row-left">
+            <div class="row-icon" style="background:#fffbec">➕</div>
+            <div class="row-text"><div class="label">添加新设备</div><div class="sub">通过验证码绑定</div></div>
+          </div>
+          <div class="row-right"><span class="chevron">›</span></div>
+        </div>
+      </div>
+
+      <div class="section-title">声音</div>
+      <div class="card">
+        <div class="row" onclick="openSubpage('sub-sound-library')" style="cursor:pointer">
+          <div class="row-left">
+            <div class="row-icon" style="background:#f0f4ff">🔊</div>
+            <div class="row-text"><div class="label">声音库</div><div class="sub">系统音色 · 克隆我的声音 · 声纹识别</div></div>
+          </div>
+          <div class="row-right"><span class="chevron">›</span></div>
+        </div>
+      </div>
+
+      <div class="section-title">知识库</div>
+      <div class="card">
+        <div class="row" onclick="openSubpage('sub-knowledge')" style="cursor:pointer">
+          <div class="row-left">
+            <div class="row-icon" style="background:#e8fdf5">📚</div>
+            <div class="row-text"><div class="label">知识库管理</div><div class="sub">2 个自定义 · 3 个系统</div></div>
+          </div>
+          <div class="row-right"><span class="chevron">›</span></div>
+        </div>
+        <div class="row" style="cursor:pointer">
+          <div class="row-left">
+            <div class="row-icon" style="background:#fff8e6">🧠</div>
+            <div class="row-text">
+              <div class="label">记忆</div>
+              <div class="sub">自动学习对话，形成个性化知识</div>
+            </div>
+          </div>
+          <div class="row-right"><div class="toggle on" id="memory-toggle" onclick="toggleMemory(this)"></div></div>
+        </div>
+      </div>
+
+      <div class="section-title">账号与设置</div>
+      <div class="card">
+        <div class="row" onclick="showToast('功能开发中…')" style="cursor:pointer">
+          <div class="row-left">
+            <div class="row-icon" style="background:#e8fdf5">🔒</div>
+            <div class="row-text"><div class="label">隐私设置</div></div>
+          </div>
+          <div class="row-right"><span class="chevron">›</span></div>
+        </div>
+        <div class="row" style="cursor:pointer">
+          <div class="row-left">
+            <div class="row-icon" style="background:#fff8e6">🔔</div>
+            <div class="row-text"><div class="label">消息通知</div></div>
+          </div>
+          <div class="row-right"><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        </div>
+        <div class="row" onclick="showToast('当前版本 v4.0.0')" style="cursor:pointer">
+          <div class="row-left">
+            <div class="row-icon" style="background:#eef0fc">ℹ️</div>
+            <div class="row-text"><div class="label">关于明境</div><div class="sub">版本 v4.0.0</div></div>
+          </div>
+          <div class="row-right"><span class="chevron">›</span></div>
+        </div>
+      </div>
+
+      <div style="height:24px;flex-shrink:0"></div>
+      </div><!-- /page-scroll -->
+    </div>
+
+  </div><!-- /pages -->
+
+  <!-- Bottom Nav -->
+  <div class="bottom-nav">
+    <div class="nav-item active" id="nav-agents" onclick="switchPage('page-agents')">
+      <div class="nav-icon">🤖</div>
+      <span class="nav-label">伙伴</span>
+    </div>
+    <div class="nav-item" id="nav-history" onclick="switchPage('page-history')">
+      <div class="nav-icon">💬</div>
+      <span class="nav-label">历史</span>
+    </div>
+    <div class="nav-item" id="nav-mine" onclick="switchPage('page-mine')">
+      <div class="nav-icon">👤</div>
+      <span class="nav-label">我的</span>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       SUB-PAGE: 新建角色 (same structure as role-config)
+  ══════════════════════════════════════ -->
+  <div class="subpage" id="sub-new-agent">
+    <div class="sub-header">
+      <button class="back-btn" onclick="closeSubpage('sub-new-agent')">‹</button>
+      <div>
+        <div class="sub-title">新建角色</div>
+        <div class="sub-subtitle">从零开始创建</div>
+      </div>
+    </div>
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab(this,'na-tab-persona')">🎭 人设</div>
+      <div class="tab" onclick="switchTab(this,'na-tab-voice')">🔊 声音</div>
+      <div class="tab" onclick="switchTab(this,'na-tab-kb')">📚 知识库</div>
+    </div>
+    <div style="flex:1;overflow-y:auto;">
+      <!-- Tab: 人设 -->
+      <div class="tab-panel active" id="na-tab-persona">
+        <div class="spacer-8"></div>
+        <div class="form-group">
+          <label>伙伴名称</label>
+          <input type="text" id="na-name" placeholder="给新角色起个名字">
+        </div>
+        <div class="form-group">
+          <div class="prompt-label-row">
+            <label>系统提示词</label>
+            <div class="template-btn" onclick="toggleTemplatesNA()">📋 模板</div>
+          </div>
+          <div class="template-list" id="na-template-list">
+            <div class="template-item" onclick="applyTemplateNA('learning')">
+              <div class="template-item-icon">🧮</div>
+              <div class="template-item-body"><div class="template-item-name">学习助手</div><div class="template-item-desc">数学、英语、科普辅导</div></div>
+            </div>
+            <div class="template-item" onclick="applyTemplateNA('story')">
+              <div class="template-item-icon">🌙</div>
+              <div class="template-item-body"><div class="template-item-name">故事伙伴</div><div class="template-item-desc">睡前故事、创意讲述</div></div>
+            </div>
+            <div class="template-item" onclick="applyTemplateNA('companion')">
+              <div class="template-item-icon">💛</div>
+              <div class="template-item-body"><div class="template-item-name">情绪陪伴</div><div class="template-item-desc">倾听、鼓励、情绪支持</div></div>
+            </div>
+            <div class="template-item" onclick="applyTemplateNA('custom')">
+              <div class="template-item-icon">✨</div>
+              <div class="template-item-body"><div class="template-item-name">自由创作</div><div class="template-item-desc">从空白开始自定义</div></div>
+            </div>
+          </div>
+          <textarea id="na-prompt" placeholder="描述角色的名字、性格、说话风格和专长方向…" oninput="updateWordCountNA()"></textarea>
+          <div class="word-count-row">
+            <span class="word-count-tip">💡 建议描述：名字、性格、说话方式、擅长话题</span>
+            <span class="word-count" id="na-word-count">0 字</span>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="closeSubpage('sub-new-agent')">取消</button>
+          <button class="btn-primary" onclick="saveNewAgent()">创建角色</button>
+        </div>
+        <div class="spacer-16"></div>
+      </div>
+      <!-- Tab: 声音 -->
+      <div class="tab-panel" id="na-tab-voice">
+        <div class="spacer-8"></div>
+        <div class="form-group">
+          <label>音色选择</label>
+          <select><option>甜美女声 A</option><option>活泼男声 B</option><option>温柔女声 C</option><option>卡通音色 D</option></select>
+        </div>
+        <div class="tone-row">
+          <label>语速调节</label>
+          <input type="range" min="0" max="100" value="55">
+          <div class="tone-ends"><span>🐢 慢速</span><span>🐇 快速</span></div>
+        </div>
+        <div class="tone-row">
+          <label>音量大小</label>
+          <input type="range" min="0" max="100" value="80">
+          <div class="tone-ends"><span>🔇 安静</span><span>🔊 响亮</span></div>
+        </div>
+        <div class="tone-row">
+          <label>音调高低</label>
+          <input type="range" min="0" max="100" value="60">
+          <div class="tone-ends"><span>低沉</span><span>高亢</span></div>
+        </div>
+        <div class="info-tip">💡 调整完成后点击「试听」可以预览效果</div>
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="showToast('🔊 正在试听…')">试听</button>
+          <button class="btn-primary" onclick="saveNewAgent()">创建角色</button>
+        </div>
+        <div class="spacer-16"></div>
+      </div>
+      <!-- Tab: 知识库 -->
+      <div class="tab-panel" id="na-tab-kb">
+        <div class="spacer-8"></div>
+        <div class="section-title" style="padding-top:8px">绑定知识库</div>
+        <div class="card">
+          <div class="row"><div class="row-left"><div class="row-icon" style="background:#e8fdf5">📗</div><div class="row-text"><div class="label">小学数学题库</div><div class="sub">3,240 道题</div></div></div><div class="row-right"><div class="toggle" onclick="this.classList.toggle('on')"></div></div></div>
+          <div class="row"><div class="row-left"><div class="row-icon" style="background:#eef0fc">📘</div><div class="row-text"><div class="label">英语绘本词汇</div><div class="sub">1,500 词</div></div></div><div class="row-right"><div class="toggle" onclick="this.classList.toggle('on')"></div></div></div>
+          <div class="row"><div class="row-left"><div class="row-icon" style="background:#fff8e6">📙</div><div class="row-text"><div class="label">经典童话故事</div><div class="sub">328 篇</div></div></div><div class="row-right"><div class="toggle" onclick="this.classList.toggle('on')"></div></div></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn-primary" onclick="saveNewAgent()">创建角色</button>
+        </div>
+        <div class="spacer-16"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SUB-PAGE: 声音克隆
+  ══════════════════════════════════════ -->
+  <div class="subpage" id="sub-clone-voice">
+    <div class="sub-header">
+      <button class="back-btn" onclick="closeSubpage('sub-clone-voice')">‹</button>
+      <div>
+        <div class="sub-title">克隆我的声音</div>
+        <div class="sub-subtitle">仅需 30 秒录音</div>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:0 16px;">
+      <div class="spacer-8"></div>
+
+      <!-- 步骤指示 -->
+      <div class="clone-steps">
+        <div class="clone-step active" id="cstep-1">
+          <div class="clone-step-num">1</div>
+          <div class="clone-step-label">阅读须知</div>
+        </div>
+        <div class="clone-step-line"></div>
+        <div class="clone-step" id="cstep-2">
+          <div class="clone-step-num">2</div>
+          <div class="clone-step-label">录制声音</div>
+        </div>
+        <div class="clone-step-line"></div>
+        <div class="clone-step" id="cstep-3">
+          <div class="clone-step-num">3</div>
+          <div class="clone-step-label">生成音色</div>
+        </div>
+      </div>
+
+      <!-- Step 1: 须知 -->
+      <div class="clone-panel" id="cpanel-1">
+        <div class="clone-notice-card">
+          <div class="clone-notice-title">📋 录制须知</div>
+          <div class="clone-notice-item">🔇 请在安静的环境中录制，避免背景噪音</div>
+          <div class="clone-notice-item">🎙️ 手机麦克风距嘴巴约 15–20 厘米</div>
+          <div class="clone-notice-item">⏱️ 朗读文本约需 30 秒，语速自然即可</div>
+          <div class="clone-notice-item">✅ 克隆结果仅用于本设备 AI 伙伴发声</div>
+          <div class="clone-notice-item">🔒 录音数据加密存储，不会对外共享</div>
+        </div>
+        <div class="info-tip" style="margin:12px 0 0">💡 建议在卧室或书房等安静空间录制效果更佳</div>
+        <div style="margin-top:16px">
+          <button class="btn-primary" onclick="goCloneStep(2)">我已了解，开始录制 →</button>
+        </div>
+      </div>
+
+      <!-- Step 2: 录制 -->
+      <div class="clone-panel" id="cpanel-2" style="display:none">
+        <div class="clone-text-card">
+          <div class="clone-text-label">请朗读以下文字</div>
+          <div class="clone-read-text" id="clone-read-text">
+            "明镜所以照形，古事所以知今。每一次相遇，都是一段新的旅程的开始。让我们用声音，记录下这美好的时光，陪伴彼此走过每一个平凡而珍贵的日子。"
+          </div>
+        </div>
+
+        <!-- 录音可视化 -->
+        <div class="record-area" id="record-area">
+          <div class="record-waves" id="record-waves">
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+            <div class="wave-bar"></div><div class="wave-bar"></div><div class="wave-bar"></div>
+          </div>
+          <div class="record-time" id="record-timer">00:00</div>
+          <div class="record-hint" id="record-hint">点击下方按钮开始录音</div>
+          <div class="info-tip" id="clone-verify-tip" style="display:none;margin:10px 0 0;text-align:left">⚠️ 请朗读完整段文本后再点击完成</div>
+        </div>
+
+        <div class="record-btn-row">
+          <button class="record-btn" id="record-btn" onclick="toggleRecording()">
+            <div class="record-btn-inner" id="record-btn-inner">🎙️</div>
+          </button>
+        </div>
+        <div class="record-status" id="record-status">准备就绪</div>
+
+        <div style="margin-top:20px;display:flex;gap:10px">
+          <button class="btn-secondary" onclick="goCloneStep(1)" style="flex:1">← 返回</button>
+          <button class="btn-primary" id="clone-next-btn" style="flex:1;opacity:.4;pointer-events:none" onclick="verifyAndProceed()">下一步 →</button>
+        </div>
+      </div>
+
+      <!-- Step 3: 生成中 -->
+      <div class="clone-panel" id="cpanel-3" style="display:none">
+        <div class="clone-generating">
+          <div class="gen-spinner">
+            <div class="gen-ring"></div>
+            <div class="gen-icon">🎵</div>
+          </div>
+          <div class="gen-title" id="gen-title">正在生成音色…</div>
+          <div class="gen-sub" id="gen-sub">分析声纹特征，预计需要 10–20 秒</div>
+          <div class="gen-progress-track">
+            <div class="gen-progress-bar" id="gen-bar"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spacer-16"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SUB-PAGE: 知识库管理
+  ══════════════════════════════════════ -->
+  <div class="subpage" id="sub-knowledge">
+    <div class="sub-header">
+      <button class="back-btn" onclick="closeSubpage('sub-knowledge')">‹</button>
+      <div>
+        <div class="sub-title">知识库管理</div>
+        <div class="sub-subtitle">自定义 · 系统内置</div>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto;">
+      <div class="spacer-8"></div>
+
+      <!-- 记忆开关 -->
+      <div class="knowledge-memory-row" onclick="toggleMemoryKB()">
+        <div class="row-left">
+          <div class="row-icon" style="background:#fff8e6">🧠</div>
+          <div class="row-text">
+            <div class="label">记忆</div>
+            <div class="sub">自动从对话中学习，形成个性化知识</div>
+          </div>
+        </div>
+        <div class="row-right"><div class="toggle on" id="kb-memory-toggle" onclick="event.stopPropagation();toggleMemoryKB()"></div></div>
+      </div>
+      <div class="info-tip" id="memory-tip" style="margin-top:4px">🔒 开启后对话内容将加密存储，你可随时关闭并清除记忆数据</div>
+
+      <!-- 新建知识库 -->
+      <div class="section-title">我的知识库</div>
+      <div style="padding:0 16px 12px;display:flex;gap:8px">
+        <button class="kb-add-btn" onclick="openModal('modal-kb-new')">
+          <span>📄</span> 上传文件
+        </button>
+        <button class="kb-add-btn" onclick="openModal('modal-kb-text')">
+          <span>✏️</span> 添加文本
+        </button>
+      </div>
+
+      <!-- 用户知识库列表 -->
+      <div class="card">
+        <div class="row" onclick="showToast('查看知识库详情…')" style="cursor:pointer">
+          <div class="row-left">
+            <div class="row-icon" style="background:#e8fdf5">📄</div>
+            <div class="row-text"><div class="label">我的故事集</div><div class="sub">5 个文件 · 12.4 MB · 已同步</div></div>
+          </div>
+          <div class="row-right"><span class="badge badge-green">启用</span><span class="chevron">›</span></div>
+        </div>
+        <div class="row" onclick="showToast('查看知识库详情…')" style="cursor:pointer">
+          <div class="row-left">
+            <div class="row-icon" style="background:#eef0fc">✏️</div>
+            <div class="row-text"><div class="label">自定义词汇</div><div class="sub">32 条文本 · 已同步</div></div>
+          </div>
+          <div class="row-right"><span class="badge badge-green">启用</span><span class="chevron">›</span></div>
+        </div>
+      </div>
+
+      <!-- 系统知识库 -->
+      <div class="section-title">系统知识库</div>
+      <div class="card">
+        <div class="row">
+          <div class="row-left">
+            <div class="row-icon" style="background:#e8fdf5">📗</div>
+            <div class="row-text"><div class="label">小学数学题库</div><div class="sub">3,240 道题 · 官方内置</div></div>
+          </div>
+          <div class="row-right"><span class="badge badge-indigo">系统</span><span class="chevron">›</span></div>
+        </div>
+        <div class="row">
+          <div class="row-left">
+            <div class="row-icon" style="background:#eef0fc">📘</div>
+            <div class="row-text"><div class="label">英语绘本词汇</div><div class="sub">1,500 词 · 官方内置</div></div>
+          </div>
+          <div class="row-right"><span class="badge badge-indigo">系统</span><span class="chevron">›</span></div>
+        </div>
+        <div class="row">
+          <div class="row-left">
+            <div class="row-icon" style="background:#fff8e6">📙</div>
+            <div class="row-text"><div class="label">经典童话故事</div><div class="sub">328 篇 · 官方内置</div></div>
+          </div>
+          <div class="row-right"><span class="badge badge-indigo">系统</span><span class="chevron">›</span></div>
+        </div>
+      </div>
+
+      <div style="height:24px;flex-shrink:0"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SUB-PAGE: 声音库
+  ══════════════════════════════════════ -->
+  <div class="subpage" id="sub-sound-library">
+    <div class="sub-header">
+      <button class="back-btn" onclick="closeSubpage('sub-sound-library')">‹</button>
+      <div>
+        <div class="sub-title">声音库</div>
+        <div class="sub-subtitle">选择或克隆音色</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab(this,'sl-tab-my')">我的</div>
+      <div class="tab" onclick="switchTab(this,'sl-tab-female')">女声</div>
+      <div class="tab" onclick="switchTab(this,'sl-tab-male')">男声</div>
+      <div class="tab" onclick="switchTab(this,'sl-tab-lang')">其他语言</div>
+    </div>
+
+    <div style="flex:1; overflow-y:auto;">
+
+      <!-- ── 我的 ── -->
+      <div class="tab-panel active" id="sl-tab-my">
+        <div class="spacer-8"></div>
+
+        <!-- 克隆入口 -->
+        <div class="voice-clone-banner" onclick="openSubpage('sub-clone-voice')">
+          <div class="voice-clone-icon">🎤</div>
+          <div class="voice-clone-body">
+            <div class="voice-clone-title">克隆我的声音</div>
+            <div class="voice-clone-desc">录制 30 秒，生成专属音色</div>
+          </div>
+          <div class="voice-clone-arrow">›</div>
+        </div>
+
+        <div class="section-title" style="padding-top:4px">已克隆</div>
+
+        <div class="sound-card selected" onclick="selectVoice(this,'my-voice-1')">
+          <div class="sound-card-left">
+            <div class="sound-avatar" style="background:linear-gradient(135deg,#FF6B6B,#FF8E53)">我</div>
+            <div class="sound-info">
+              <div class="sound-name">我的声音</div>
+              <div class="sound-meta">克隆于 2026-04-10 · 高保真</div>
+            </div>
+          </div>
+          <div class="sound-card-right">
+            <button class="play-btn" onclick="event.stopPropagation(); showToast('▶ 试听中…')">▶</button>
+            <button class="sound-edit-btn" onclick="event.stopPropagation();openEditVoiceName('my-voice-1','我的声音')">✏️</button>
+            <button class="sound-delete-btn" onclick="event.stopPropagation();deleteVoice('my-voice-1')">🗑️</button>
+            <div class="sound-check">✓</div>
+          </div>
+        </div>
+
+        <div class="spacer-16"></div>
+      </div>
+
+      <!-- ── 女声 ── -->
+      <div class="tab-panel" id="sl-tab-female">
+        <div class="spacer-8"></div>
+
+        <div class="sound-card selected" onclick="selectVoice(this,'f-1')">
+          <div class="sound-card-left">
+            <div class="sound-avatar" style="background:linear-gradient(135deg,#f093fb,#f5576c)">晴</div>
+            <div class="sound-info">
+              <div class="sound-name">晴朗 · 活泼</div>
+              <div class="sound-meta">中文 · 适合儿童教育</div>
+            </div>
+          </div>
+          <div class="sound-card-right">
+            <button class="play-btn" onclick="event.stopPropagation(); showToast('▶ 试听中…')">▶</button>
+            <div class="sound-check">✓</div>
+          </div>
+        </div>
+
+        <div class="sound-card" onclick="selectVoice(this,'f-2')">
+          <div class="sound-card-left">
+            <div class="sound-avatar" style="background:linear-gradient(135deg,#fccb90,#d57eeb)">柔</div>
+            <div class="sound-info">
+              <div class="sound-name">柔和 · 温柔</div>
+              <div class="sound-meta">中文 · 适合睡前故事</div>
+            </div>
+          </div>
+          <div class="sound-card-right">
+            <button class="play-btn" onclick="event.stopPropagation(); showToast('▶ 试听中…')">▶</button>
+          </div>
+        </div>
+
+        <div class="sound-card" onclick="selectVoice(this,'f-3')">
+          <div class="sound-card-left">
+            <div class="sound-avatar" style="background:linear-gradient(135deg,#a1c4fd,#c2e9fb)">清</div>
+            <div class="sound-info">
+              <div class="sound-name">清澈 · 知性</div>
+              <div class="sound-meta">中文 · 适合学习辅导</div>
+            </div>
+          </div>
+          <div class="sound-card-right">
+            <button class="play-btn" onclick="event.stopPropagation(); showToast('▶ 试听中…')">▶</button>
+          </div>
+        </div>
+
+        <div class="sound-card" onclick="selectVoice(this,'f-4')">
+          <div class="sound-card-left">
+            <div class="sound-avatar" style="background:linear-gradient(135deg,#fddb92,#d1fdff)">甜</div>
+            <div class="sound-info">
+              <div class="sound-name">甜美 · 俏皮</div>
+              <div class="sound-meta">中文 · 适合角色扮演</div>
+            </div>
+          </div>
+          <div class="sound-card-right">
+            <button class="play-btn" onclick="event.stopPropagation(); showToast('▶ 试听中…')">▶</button>
+          </div>
+        </div>
+
+        <div class="spacer-16"></div>
+      </div>
+
+      <!-- ── 男声 ── -->
+      <div class="tab-panel" id="sl-tab-male">
+        <div class="spacer-8"></div>
+
+        <div class="sound-card" onclick="selectVoice(this,'m-1')">
+          <div class="sound-card-left">
+            <div class="sound-avatar" style="background:linear-gradient(135deg,#0fd850,#f9f047)">朗</div>
+            <div class="sound-info">
+              <div class="sound-name">朗朗 · 阳光</div>
+              <div class="sound-meta">中文 · 适合儿童陪伴</div>
+            </div>
+          </div>
+          <div class="sound-card-right">
+            <button class="play-btn" onclick="event.stopPropagation(); showToast('▶ 试听中…')">▶</button>
+          </div>
+        </div>
+
+        <div class="sound-card" onclick="selectVoice(this,'m-2')">
+          <div class="sound-card-left">
+            <div class="sound-avatar" style="background:linear-gradient(135deg,#4facfe,#00f2fe)">稳</div>
+            <div class="sound-info">
+              <div class="sound-name">沉稳 · 知识感</div>
+              <div class="sound-meta">中文 · 适合科普问答</div>
+            </div>
+          </div>
+          <div class="sound-card-right">
+            <button class="play-btn" onclick="event.stopPropagation(); showToast('▶ 试听中…')">▶</button>
+          </div>
+        </div>
+
+        <div class="sound-card" onclick="selectVoice(this,'m-3')">
+          <div class="sound-card-left">
+            <div class="sound-avatar" style="background:linear-gradient(135deg,#43e97b,#38f9d7)">趣</div>
+            <div class="sound-info">
+              <div class="sound-name">幽默 · 风趣</div>
+              <div class="sound-meta">中文 · 适合故事讲述</div>
+            </div>
+          </div>
+          <div class="sound-card-right">
+            <button class="play-btn" onclick="event.stopPropagation(); showToast('▶ 试听中…')">▶</button>
+          </div>
+        </div>
+
+        <div class="spacer-16"></div>
+      </div>
+
+      <!-- ── 其他语言 ── -->
+      <div class="tab-panel" id="sl-tab-lang">
+        <div class="spacer-8"></div>
+
+        <div class="lang-section-label">🇺🇸 英语</div>
+        <div class="sound-card" onclick="selectVoice(this,'en-1')">
+          <div class="sound-card-left">
+            <div class="sound-avatar" style="background:linear-gradient(135deg,#667eea,#764ba2)">En</div>
+            <div class="sound-info">
+              <div class="sound-name">Lily · 美式英语</div>
+              <div class="sound-meta">English · 亲切自然</div>
+            </div>
+          </div>
+          <div class="sound-card-right">
+            <button class="play-btn" onclick="event.stopPropagation(); showToast('▶ 试听中…')">▶</button>
+          </div>
+        </div>
+        <div class="sound-card" onclick="selectVoice(this,'en-2')">
+          <div class="sound-card-left">
+            <div class="sound-avatar" style="background:linear-gradient(135deg,#764ba2,#667eea)">En</div>
+            <div class="sound-info">
+              <div class="sound-name">Tom · 英式英语</div>
+              <div class="sound-meta">English · 清晰标准</div>
+            </div>
+          </div>
+          <div class="sound-card-right">
+            <button class="play-btn" onclick="event.stopPropagation(); showToast('▶ 试听中…')">▶</button>
+          </div>
+        </div>
+
+        <div class="lang-section-label">🇯🇵 日语</div>
+        <div class="sound-card" onclick="selectVoice(this,'ja-1')">
+          <div class="sound-card-left">
+            <div class="sound-avatar" style="background:linear-gradient(135deg,#f7797d,#FBD786)">あ</div>
+            <div class="sound-info">
+              <div class="sound-name">Hana · 日语女声</div>
+              <div class="sound-meta">日本語 · 温柔自然</div>
+            </div>
+          </div>
+          <div class="sound-card-right">
+            <button class="play-btn" onclick="event.stopPropagation(); showToast('▶ 试听中…')">▶</button>
+          </div>
+        </div>
+
+        <div class="lang-section-label">🇰🇷 韩语</div>
+        <div class="sound-card" onclick="selectVoice(this,'ko-1')">
+          <div class="sound-card-left">
+            <div class="sound-avatar" style="background:linear-gradient(135deg,#11998e,#38ef7d)">한</div>
+            <div class="sound-info">
+              <div class="sound-name">Yuna · 韩语女声</div>
+              <div class="sound-meta">한국어 · 清脆活泼</div>
+            </div>
+          </div>
+          <div class="sound-card-right">
+            <button class="play-btn" onclick="event.stopPropagation(); showToast('▶ 试听中…')">▶</button>
+          </div>
+        </div>
+
+        <div class="spacer-16"></div>
+      </div>
+
+    </div><!-- /scroll area -->
+
+    <!-- 底部确认栏 -->
+    <div class="sound-confirm-bar">
+      <div class="sound-selected-label" id="sound-selected-label">已选：我的声音</div>
+      <button class="btn-primary" style="width:auto;padding:10px 24px" onclick="confirmVoice()">确认使用</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SUB-PAGE: 角色配置
+  ══════════════════════════════════════ -->
+  <div class="subpage" id="sub-role-config">
+    <div class="sub-header">
+      <button class="back-btn" onclick="closeSubpage('sub-role-config')">‹</button>
+      <div>
+        <div class="sub-title">角色配置</div>
+        <div class="sub-subtitle">笃笃</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <div class="tab active" onclick="switchTab(this,'rc-tab-persona')">🎭 人设</div>
+      <div class="tab" onclick="switchTab(this,'rc-tab-voice')">🔊 声音</div>
+      <div class="tab" onclick="switchTab(this,'rc-tab-kb')">📚 知识库</div>
+    </div>
+
+    <div style="flex:1; overflow-y:auto;">
+      <!-- Tab: 人设 -->
+      <div class="tab-panel active" id="rc-tab-persona">
+        <div class="spacer-8"></div>
+
+        <!-- 名称 -->
+        <div class="form-group">
+          <label>伙伴名称</label>
+          <input type="text" id="agent-name-input" value="笃笃" placeholder="给角色起个名字">
+        </div>
+
+        <!-- 系统提示词 -->
+        <div class="form-group">
+          <div class="prompt-label-row">
+            <label>系统提示词</label>
+            <div class="template-btn" onclick="toggleTemplates()">📋 模板</div>
+          </div>
+
+          <!-- 模板列表 (折叠) -->
+          <div class="template-list" id="template-list">
+            <div class="template-item" onclick="applyTemplate('learning')">
+              <div class="template-item-icon">🧮</div>
+              <div class="template-item-body">
+                <div class="template-item-name">学习助手</div>
+                <div class="template-item-desc">数学、英语、科普辅导</div>
+              </div>
+            </div>
+            <div class="template-item" onclick="applyTemplate('story')">
+              <div class="template-item-icon">🌙</div>
+              <div class="template-item-body">
+                <div class="template-item-name">故事伙伴</div>
+                <div class="template-item-desc">睡前故事、创意讲述</div>
+              </div>
+            </div>
+            <div class="template-item" onclick="applyTemplate('companion')">
+              <div class="template-item-icon">💛</div>
+              <div class="template-item-body">
+                <div class="template-item-name">情绪陪伴</div>
+                <div class="template-item-desc">倾听、鼓励、情绪支持</div>
+              </div>
+            </div>
+            <div class="template-item" onclick="applyTemplate('custom')">
+              <div class="template-item-icon">✨</div>
+              <div class="template-item-body">
+                <div class="template-item-name">自由创作</div>
+                <div class="template-item-desc">从空白开始自定义</div>
+              </div>
+            </div>
+          </div>
+
+          <textarea id="system-prompt" placeholder="描述角色的名字、性格、说话风格和专长方向…" oninput="updateWordCount()">你是明境AI陪伴机器人的默认伙伴，名叫笃笃，是一个活泼可爱的学习小伙伴。专注于帮助6-12岁的小朋友学习数学和英语，用简单易懂的语言解释知识，多用比喻和例子，保持鼓励和正面的态度。</textarea>
+          <div class="word-count-row">
+            <span class="word-count-tip">💡 建议描述：名字、性格、说话方式、擅长话题</span>
+            <span class="word-count" id="word-count">0 字</span>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="closeSubpage('sub-role-config')">取消</button>
+          <button class="btn-primary" onclick="saveConfig()">保存配置</button>
+        </div>
+        <div class="spacer-16"></div>
+      </div>
+
+      <!-- Tab: 声音 -->
+      <div class="tab-panel" id="rc-tab-voice">
+        <div class="spacer-8"></div>
+        <div class="form-group">
+          <label>音色选择</label>
+          <select>
+            <option>甜美女声 A</option>
+            <option>活泼男声 B</option>
+            <option>温柔女声 C</option>
+            <option>卡通音色 D</option>
+          </select>
+        </div>
+
+        <div class="tone-row">
+          <label>语速调节</label>
+          <input type="range" min="0" max="100" value="55">
+          <div class="tone-ends"><span>🐢 慢速</span><span>🐇 快速</span></div>
+        </div>
+
+        <div class="tone-row">
+          <label>音量大小</label>
+          <input type="range" min="0" max="100" value="80">
+          <div class="tone-ends"><span>🔇 安静</span><span>🔊 响亮</span></div>
+        </div>
+
+        <div class="tone-row">
+          <label>音调高低</label>
+          <input type="range" min="0" max="100" value="60">
+          <div class="tone-ends"><span>低沉</span><span>高亢</span></div>
+        </div>
+
+        <div class="info-tip">💡 调整完成后点击「试听」可以预览效果</div>
+
+        <div class="btn-row">
+          <button class="btn-secondary" onclick="showToast('🔊 正在试听…')">试听</button>
+          <button class="btn-primary" onclick="saveConfig()">保存</button>
+        </div>
+        <div class="spacer-16"></div>
+      </div>
+
+      <!-- Tab: 知识库 -->
+      <div class="tab-panel" id="rc-tab-kb">
+        <div class="spacer-8"></div>
+
+        <div class="section-title" style="padding-top:8px">已绑定知识库</div>
+        <div class="card">
+          <div class="row">
+            <div class="row-left">
+              <div class="row-icon" style="background:#e8fdf5">📗</div>
+              <div class="row-text"><div class="label">小学数学题库</div><div class="sub">3,240 道题 · 已同步</div></div>
+            </div>
+            <div class="row-right"><span class="badge badge-green">启用</span></div>
+          </div>
+          <div class="row">
+            <div class="row-left">
+              <div class="row-icon" style="background:#eef0fc">📘</div>
+              <div class="row-text"><div class="label">英语绘本词汇</div><div class="sub">1,500 词 · 已同步</div></div>
+            </div>
+            <div class="row-right"><span class="badge badge-green">启用</span></div>
+          </div>
+          <div class="row" onclick="showToast('功能开发中…')" style="cursor:pointer">
+            <div class="row-left">
+              <div class="row-icon" style="background:#fff8e6">📙</div>
+              <div class="row-text"><div class="label">经典童话故事</div><div class="sub">328 篇 · 等待同步</div></div>
+            </div>
+            <div class="row-right"><span class="badge badge-amber">待同步</span></div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn-primary" onclick="showToast('+ 添加知识库')">+ 添加知识库</button>
+        </div>
+        <div class="spacer-16"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SUB-PAGE: 声纹识别
+  ══════════════════════════════════════ -->
+  <div class="subpage" id="sub-voice">
+    <div class="sub-header">
+      <button class="back-btn" onclick="closeSubpage('sub-voice')">‹</button>
+      <div>
+        <div class="sub-title">声纹识别</div>
+        <div class="sub-subtitle">管理说话人声纹</div>
+      </div>
+    </div>
+
+    <div style="flex:1; overflow-y:auto;">
+      <div class="info-tip" style="margin-top:14px">💡 声纹用于识别不同说话人，建议上传 2 秒以上的清晰语音</div>
+
+      <div class="section-title">已注册说话人</div>
+
+      <div class="voice-card">
+        <div class="voice-avatar">👧</div>
+        <div class="voice-info">
+          <div class="voice-name">小婷</div>
+          <div class="voice-sub">注册于 2026-04-01 · 3 条样本</div>
+        </div>
+        <div class="voice-actions">
+          <button class="act-btn edit" onclick="showToast('编辑功能开发中…')">✏️</button>
+          <button class="act-btn delete" onclick="showToast('已删除')">🗑️</button>
+        </div>
+      </div>
+
+      <div class="voice-card">
+        <div class="voice-avatar">👦</div>
+        <div class="voice-info">
+          <div class="voice-name">小明</div>
+          <div class="voice-sub">注册于 2026-04-02 · 2 条样本</div>
+        </div>
+        <div class="voice-actions">
+          <button class="act-btn edit" onclick="showToast('编辑功能开发中…')">✏️</button>
+          <button class="act-btn delete" onclick="showToast('已删除')">🗑️</button>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn-primary" onclick="openAddSpeaker()">+ 添加说话人</button>
+      </div>
+      <div class="spacer-16"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SUB-PAGE: 管理设备（我的 → 全部设备）
+  ══════════════════════════════════════ -->
+  <div class="subpage" id="sub-device">
+    <div class="sub-header">
+      <button class="back-btn" onclick="closeSubpage('sub-device')">‹</button>
+      <div>
+        <div class="sub-title">管理设备</div>
+        <div class="sub-subtitle">全部绑定设备 · 共 2 台</div>
+      </div>
+      <button class="icon-btn" style="margin-left:auto" onclick="openAddDevice()">➕</button>
+    </div>
+
+    <div style="flex:1; overflow-y:auto;">
+      <div class="spacer-8"></div>
+
+      <!-- Device Card 1: Online -->
+      <div class="dev-card">
+        <div class="dev-card-header">
+          <div class="dev-card-header-left">
+            <div class="dev-card-icon">🤖</div>
+            <div>
+              <div class="dev-card-name">设备 101</div>
+              <div class="dev-card-mac">44:1b:**:**:06:90</div>
+            </div>
+          </div>
+          <div class="dev-card-online-badge online"><div class="d-dot"></div>在线</div>
+        </div>
+        <div class="dev-card-body">
+          <div class="dev-row">
+            <div class="dev-row-label">最近对话</div>
+            <div class="dev-row-value muted">1 个月前</div>
+          </div>
+          <div class="dev-row">
+            <div class="dev-row-label">固件版本</div>
+            <div class="dev-row-value">
+              2.0.5
+              <span class="dev-ota-badge pending">有更新</span>
+            </div>
+          </div>
+          <div class="dev-row">
+            <div class="dev-row-label">OTA 升级</div>
+            <div class="dev-row-value">
+              <div class="toggle on" onclick="this.classList.toggle('on');showToast(this.classList.contains('on')?'✅ 自动升级已开启':'🔒 自动升级已关闭')"></div>
+            </div>
+          </div>
+          <div class="dev-row">
+            <div class="dev-row-label">角色配置</div>
+            <div class="dev-row-value">
+              <select class="dev-role-select" onchange="showToast('✅ 已切换为「'+this.value+'」')">
+                <option>笃笃</option>
+                <option selected>故事大王</option>
+                <option>情绪伙伴</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <button class="dev-unbind-btn" onclick="openUnbindConfirm('设备 101')">解绑设备</button>
+      </div>
+
+      <!-- Device Card 2: Offline -->
+      <div class="dev-card">
+        <div class="dev-card-header">
+          <div class="dev-card-header-left">
+            <div class="dev-card-icon" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">🤖</div>
+            <div>
+              <div class="dev-card-name">设备 102</div>
+              <div class="dev-card-mac">44:1b:**:**:07:12</div>
+            </div>
+          </div>
+          <div class="dev-card-online-badge offline">⚫ 离线</div>
+        </div>
+        <div class="dev-card-body">
+          <div class="dev-row">
+            <div class="dev-row-label">最近对话</div>
+            <div class="dev-row-value muted">3 天前</div>
+          </div>
+          <div class="dev-row">
+            <div class="dev-row-label">固件版本</div>
+            <div class="dev-row-value">
+              2.0.5
+              <span class="dev-ota-badge">最新</span>
+            </div>
+          </div>
+          <div class="dev-row">
+            <div class="dev-row-label">OTA 升级</div>
+            <div class="dev-row-value">
+              <div class="toggle" onclick="this.classList.toggle('on');showToast(this.classList.contains('on')?'✅ 自动升级已开启':'🔒 自动升级已关闭')"></div>
+            </div>
+          </div>
+          <div class="dev-row">
+            <div class="dev-row-label">角色配置</div>
+            <div class="dev-row-value">
+              <select class="dev-role-select" onchange="showToast('✅ 已切换为「'+this.value+'」')">
+                <option selected>笃笃</option>
+                <option>故事大王</option>
+                <option>情绪伙伴</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <button class="dev-unbind-btn" onclick="openUnbindConfirm('设备 102')">解绑设备</button>
+      </div>
+
+      <div style="height:24px;flex-shrink:0"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       SUB-PAGE: 对话详情
+  ══════════════════════════════════════ -->
+  <div class="subpage" id="sub-chat">
+    <div class="sub-header">
+      <button class="back-btn" onclick="closeSubpage('sub-chat')">‹</button>
+      <div>
+        <div class="sub-title" id="chat-title">对话详情</div>
+        <div class="sub-subtitle" id="chat-sub"></div>
+      </div>
+    </div>
+    <div class="chat-messages" id="chat-messages"></div>
+  </div>
+
+</div><!-- /phone -->
+
+<!-- ══════════════════════════════════════
+     MODAL: 伙伴设备管理（从伙伴卡片进入）
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-agent-device" onclick="if(event.target===this) closeModal('modal-agent-device')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header-bar">
+      <h3 id="agent-device-modal-title">📱 笃笃 · 管理设备</h3>
+      <button class="modal-close" onclick="closeModal('modal-agent-device')">✕</button>
+    </div>
+    <div style="padding-bottom:8px">
+
+      <!-- 添加设备入口 -->
+      <div style="padding:12px 16px">
+        <button class="btn-primary" onclick="closeModal('modal-agent-device');openAddDevice()" style="padding:14px 0">
+          <span style="margin-right:6px">➕</span> 添加新设备
+        </button>
+      </div>
+
+      <!-- Device Card 1: Online -->
+      <div class="dev-card" style="margin-top:12px">
+        <div class="dev-card-header">
+          <div class="dev-card-header-left">
+            <div class="dev-card-icon">🤖</div>
+            <div>
+              <div class="dev-card-name">设备 101</div>
+              <div class="dev-card-mac">44:1b:**:**:06:90</div>
+            </div>
+          </div>
+          <div class="dev-card-online-badge online"><div class="d-dot"></div>在线</div>
+        </div>
+        <div class="dev-card-body">
+          <div class="dev-row">
+            <div class="dev-row-label">最近对话</div>
+            <div class="dev-row-value muted">1 个月前</div>
+          </div>
+          <div class="dev-row">
+            <div class="dev-row-label">固件版本</div>
+            <div class="dev-row-value">2.0.5 <span class="dev-ota-badge pending">有更新</span></div>
+          </div>
+          <div class="dev-row">
+            <div class="dev-row-label">OTA 升级</div>
+            <div class="dev-row-value">
+              <div class="toggle on" onclick="this.classList.toggle('on');showToast(this.classList.contains('on')?'✅ 自动升级已开启':'🔒 自动升级已关闭')"></div>
+            </div>
+          </div>
+          <div class="dev-row">
+            <div class="dev-row-label">角色配置</div>
+            <div class="dev-row-value">
+              <select class="dev-role-select" onchange="showToast('✅ 已切换为「'+this.value+'」')">
+                <option>笃笃</option>
+                <option selected>故事大王</option>
+                <option>情绪伙伴</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <button class="dev-unbind-btn" onclick="closeModal('modal-agent-device');openUnbindConfirm('设备 101')">解绑设备</button>
+      </div>
+
+      <!-- Device Card 2: Offline -->
+      <div class="dev-card">
+        <div class="dev-card-header">
+          <div class="dev-card-header-left">
+            <div class="dev-card-icon" style="background:linear-gradient(135deg,#a78bfa,#7c3aed)">🤖</div>
+            <div>
+              <div class="dev-card-name">设备 102</div>
+              <div class="dev-card-mac">44:1b:**:**:07:12</div>
+            </div>
+          </div>
+          <div class="dev-card-online-badge offline">⚫ 离线</div>
+        </div>
+        <div class="dev-card-body">
+          <div class="dev-row">
+            <div class="dev-row-label">最近对话</div>
+            <div class="dev-row-value muted">3 天前</div>
+          </div>
+          <div class="dev-row">
+            <div class="dev-row-label">固件版本</div>
+            <div class="dev-row-value">2.0.5 <span class="dev-ota-badge">最新</span></div>
+          </div>
+          <div class="dev-row">
+            <div class="dev-row-label">OTA 升级</div>
+            <div class="dev-row-value">
+              <div class="toggle" onclick="this.classList.toggle('on');showToast(this.classList.contains('on')?'✅ 自动升级已开启':'🔒 自动升级已关闭')"></div>
+            </div>
+          </div>
+          <div class="dev-row">
+            <div class="dev-row-label">角色配置</div>
+            <div class="dev-row-value">
+              <select class="dev-role-select" onchange="showToast('✅ 已切换为「'+this.value+'」')">
+                <option selected>笃笃</option>
+                <option>故事大王</option>
+                <option>情绪伙伴</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <button class="dev-unbind-btn" onclick="closeModal('modal-agent-device');openUnbindConfirm('设备 102')">解绑设备</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: 解绑确认
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-unbind-confirm" onclick="if(event.target===this) closeModal('modal-unbind-confirm')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header-bar">
+      <h3>⚠️ 确认解绑</h3>
+      <button class="modal-close" onclick="closeModal('modal-unbind-confirm')">✕</button>
+    </div>
+    <div style="padding:8px 20px 4px">
+      <p id="unbind-confirm-text" style="font-size:14px;color:var(--text2);line-height:1.7;font-weight:600">确定要解绑该设备吗？解绑后设备将无法使用当前账号的角色和数据。</p>
+    </div>
+    <div class="btn-row" style="margin-top:12px">
+      <button class="btn-secondary" onclick="closeModal('modal-unbind-confirm')">取消</button>
+      <button class="btn-primary" style="background:linear-gradient(135deg,var(--coral),#FF4D4D)" onclick="confirmUnbind()">确认解绑</button>
+    </div>
+    <div style="height:8px"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: 添加设备
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-add-device" onclick="if(event.target===this) closeModal('modal-add-device')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header-bar">
+      <h3>📱 添加新设备</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-device')">✕</button>
+    </div>
+    <div class="spacer-8"></div>
+    <div class="info-tip">请先开启设备电源，等待设备报出6位验证码</div>
+    <div class="form-group">
+      <label>验证码 *</label>
+      <input type="text" id="device-code" placeholder="请输入6位数字验证码" maxlength="6" inputmode="numeric" pattern="[0-9]*">
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="closeModal('modal-add-device')">取消</button>
+      <button class="btn-primary" onclick="confirmAddDevice()">确认绑定</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: 添加说话人
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-add-speaker" onclick="if(event.target===this) closeModal('modal-add-speaker')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header-bar">
+      <h3>🎙️ 添加说话人</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-speaker')">✕</button>
+    </div>
+    <div class="spacer-8"></div>
+    <div class="info-tip">💡 请选择2秒以上的清晰语音，避免背景噪音</div>
+    <div class="form-group">
+      <label>声纹样本 *</label>
+      <select id="voice-vector">
+        <option value="">请选择一条语音消息</option>
+        <option value="1">语音消息 2026-04-05 14:32 (3.2s)</option>
+        <option value="2">语音消息 2026-04-05 10:15 (4.1s)</option>
+        <option value="3">语音消息 2026-04-04 20:03 (2.8s)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>说话人名称 *</label>
+      <input type="text" id="speaker-name" placeholder="例如：小明、妈妈">
+    </div>
+    <div class="form-group">
+      <label>备注描述</label>
+      <textarea id="speaker-desc" placeholder="可选，描述说话人的特点…"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="closeModal('modal-add-speaker')">取消</button>
+      <button class="btn-primary" onclick="confirmAddSpeaker()">确认添加</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     MODAL: 上传文件
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-kb-new" onclick="if(event.target===this) closeModal('modal-kb-new')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header-bar">
+      <h3>📄 上传文件</h3>
+      <button class="modal-close" onclick="closeModal('modal-kb-new')">✕</button>
+    </div>
+    <div class="spacer-8"></div>
+    <div class="form-group">
+      <label>知识库名称</label>
+      <input type="text" placeholder="给这个知识库起个名字">
+    </div>
+    <div class="form-group">
+      <label>选择文件</label>
+      <div class="file-drop-zone" onclick="showToast('文件选择功能开发中…')">
+        <div class="file-drop-icon">📂</div>
+        <div class="file-drop-text">点击选择文件</div>
+        <div class="file-drop-sub">支持 PDF、TXT、DOCX，单文件最大 20MB</div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="closeModal('modal-kb-new')">取消</button>
+      <button class="btn-primary" onclick="closeModal('modal-kb-new');showToast('✅ 知识库创建成功')">确认上传</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: 添加文本
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-kb-text" onclick="if(event.target===this) closeModal('modal-kb-text')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header-bar">
+      <h3>✏️ 添加文本</h3>
+      <button class="modal-close" onclick="closeModal('modal-kb-text')">✕</button>
+    </div>
+    <div class="spacer-8"></div>
+    <div class="form-group">
+      <label>知识库名称</label>
+      <input type="text" placeholder="例如：自定义词汇、家庭故事">
+    </div>
+    <div class="form-group">
+      <label>文本内容</label>
+      <textarea placeholder="直接粘贴或输入你希望 AI 学习的内容…" style="min-height:120px"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="closeModal('modal-kb-text')">取消</button>
+      <button class="btn-primary" onclick="closeModal('modal-kb-text');showToast('✅ 文本已添加到知识库')">确认添加</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     MODAL: 编辑声音名称 (v7新增)
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="modal-edit-voice-name" onclick="if(event.target===this) closeModal('modal-edit-voice-name')">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-header-bar">
+      <h3>✏️ 修改声音名称</h3>
+      <button class="modal-close" onclick="closeModal('modal-edit-voice-name')">✕</button>
+    </div>
+    <div class="spacer-8"></div>
+    <div class="form-group">
+      <label>声音名称</label>
+      <input type="text" id="edit-voice-name-input" placeholder="请输入新的声音名称">
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="closeModal('modal-edit-voice-name')">取消</button>
+      <button class="btn-primary" onclick="confirmEditVoiceName()">确认修改</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Data ──────────────────────────────────────────
+const convData = {
+  weather: {
+    title:'天气与清明节', sub:'昨天 09:44–09:48',
+    msgs:[
+      {t:'user',c:'今天天气怎么样？',time:'09:44'},
+      {t:'ai',  c:'今天天气晴朗，温度在18-25度之间，非常适合户外活动 ☀️',time:'09:45'},
+      {t:'user',c:'那清明节有什么习俗呢？',time:'09:46'},
+      {t:'ai',  c:'清明节的主要习俗有扫墓祭祖、踏青、插柳等。人们缅怀先人，同时走出家门，感受春天的气息 🌿',time:'09:47'},
+      {t:'user',c:'谢谢！',time:'09:48'},
+      {t:'ai',  c:'不客气，有什么问题随时问我哦！😊',time:'09:48'},
+    ]
+  },
+  math: {
+    title:'数学思维 · 苹果题', sub:'今天 14:20–14:23',
+    msgs:[
+      {t:'user',c:'帮我做一道数学题：小明有12个苹果，给了小红3个，又买了5个，现在有多少个？',time:'14:20'},
+      {t:'ai',  c:'好的！先算：12 - 3 = 9，再算：9 + 5 = 14。所以小明现在有 14 个苹果 🍎',time:'14:21'},
+      {t:'user',c:'对的，谢谢！那如果是25个苹果，给了小红8个，又买了12个，现在有多少个？',time:'14:22'},
+      {t:'ai',  c:'用同样的方法：25 - 8 = 17，然后 17 + 12 = 29。所以现在有 29 个苹果！你做得很好 🌟',time:'14:23'},
+    ]
+  },
+  english: {
+    title:'英语启蒙 · 动物单词', sub:'今天 10:15–10:19',
+    msgs:[
+      {t:'user',c:'教我几个关于动物的英语单词吧！',time:'10:15'},
+      {t:'ai',  c:'好呀！🐱 Cat - 猫  🐶 Dog - 狗  🐦 Bird - 鸟  🐟 Fish - 鱼  🐰 Rabbit - 兔子',time:'10:16'},
+      {t:'user',c:'猫怎么读？',time:'10:17'},
+      {t:'ai',  c:'Cat 的发音是 /kæt/，类似中文"凯特"。试着读一下：Cat！🐱',time:'10:18'},
+      {t:'user',c:'谢谢！',time:'10:19'},
+      {t:'ai',  c:'不客气！想学更多随时来找我哦！📚',time:'10:19'},
+    ]
+  }
+};
+
+// ── Nav ───────────────────────────────────────────
+function switchPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(pageId).classList.add('active');
+  const map = {'page-agents':'nav-agents','page-history':'nav-history','page-mine':'nav-mine'};
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (map[pageId]) document.getElementById(map[pageId]).classList.add('active');
+}
+
+// ── Subpages ──────────────────────────────────────
+function openSubpage(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeSubpage(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+// ── Tabs ──────────────────────────────────────────
+function switchTab(el, panelId) {
+  const tabBar = el.closest('.tab-bar');
+  tabBar.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const container = tabBar.nextElementSibling;
+  container.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  container.querySelector('#' + panelId).classList.add('active');
+}
+
+// ── Modals ────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+function openAddDevice() { openModal('modal-add-device'); }
+function openAddSpeaker() {
+  closeSubpage('sub-voice');
+  setTimeout(() => openModal('modal-add-speaker'), 100);
+}
+
+// ── Agent Device Modal ─────────────────────────────
+function openAgentDeviceModal(agentName) {
+  document.getElementById('agent-device-modal-title').textContent = '📱 ' + agentName + ' · 管理设备';
+  openModal('modal-agent-device');
+}
+
+// ── Unbind Confirm ─────────────────────────────────
+let pendingUnbindDevice = '';
+function openUnbindConfirm(deviceName) {
+  pendingUnbindDevice = deviceName;
+  document.getElementById('unbind-confirm-text').textContent =
+    '确定要解绑「' + deviceName + '」吗？解绑后该设备将无法使用当前账号的角色和数据。';
+  openModal('modal-unbind-confirm');
+}
+function confirmUnbind() {
+  closeModal('modal-unbind-confirm');
+  showToast('✅ 已解绑「' + pendingUnbindDevice + '」');
+}
+
+function confirmAddDevice() {
+  const code = document.getElementById('device-code').value;
+  if (code.length === 6 && /^\d+$/.test(code)) {
+    closeModal('modal-add-device');
+    document.getElementById('device-code').value = '';
+    showToast('✅ 设备绑定成功！');
+  } else {
+    showToast('❌ 请输入正确的6位数字验证码');
+  }
+}
+
+function confirmAddSpeaker() {
+  const vec  = document.getElementById('voice-vector').value;
+  const name = document.getElementById('speaker-name').value.trim();
+  if (!vec)  { showToast('❌ 请选择声纹样本'); return; }
+  if (!name) { showToast('❌ 请输入说话人名称'); return; }
+  closeModal('modal-add-speaker');
+  document.getElementById('voice-vector').value = '';
+  document.getElementById('speaker-name').value = '';
+  document.getElementById('speaker-desc').value  = '';
+  showToast('✅ 说话人添加成功！');
+  setTimeout(() => openSubpage('sub-voice'), 300);
+}
+
+// ── Conversation Detail ───────────────────────────
+function openConversation(id) {
+  const data = convData[id];
+  if (!data) return;
+  document.getElementById('chat-title').textContent = data.title;
+  document.getElementById('chat-sub').textContent   = data.sub;
+  const list = document.getElementById('chat-messages');
+  list.innerHTML = '';
+  data.msgs.forEach(m => {
+    const div = document.createElement('div');
+    div.className = `msg ${m.t}`;
+    div.innerHTML = `<div class="msg-bubble">${m.c.replace(/\n/g,'<br>')}</div><div class="msg-time">${m.time}</div>`;
+    list.appendChild(div);
+  });
+  openSubpage('sub-chat');
+  setTimeout(() => { list.scrollTop = list.scrollHeight; }, 100);
+}
+
+// ── Save Config ───────────────────────────────────
+function saveConfig() {
+  closeSubpage('sub-role-config');
+  showToast('✅ 配置已保存');
+}
+
+// ── Toast ─────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ── Chart ─────────────────────────────────────────
+(function buildChart() {
+  const vals = [25, 40, 55, 30, 70, 85, 60];
+  const max  = Math.max(...vals);
+  const container = document.getElementById('chartBars');
+  vals.forEach((v, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'bar' + (i < 6 ? '' : ' dim');
+    bar.style.height = '0px';
+    container.appendChild(bar);
+    setTimeout(() => { bar.style.height = (v / max * 56) + 'px'; }, 200 + i * 60);
+  });
+})();
+
+// ── Filter chips toggle ────────────────────────────
+document.querySelectorAll('.filter-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    chip.closest('.history-filter').querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+  });
+});
+
+// ── Prompt Templates ──────────────────────────
+function toggleTemplates() {
+  const list = document.getElementById('template-list');
+  list.classList.toggle('open');
+}
+
+const promptTemplates = {
+  learning:  '你是明境AI陪伴机器人的学习助手，名叫笃笃。你活泼可爱、耐心细心，专注于帮助6-12岁小朋友学习数学和英语。用简单易懂的语言解释知识，多用比喻和生活中的例子，及时给予鼓励和正向反馈。',
+  story:     '你是明境AI陪伴机器人的故事伙伴。你温柔细腻、富有想象力，擅长讲述睡前故事、童话和寓言。用舒缓的语调和生动的描述带孩子进入奇妙的故事世界，帮助他们放松心情、快乐入眠。',
+  companion: '你是明境AI陪伴机器人的情绪伙伴。你温暖体贴、善于倾听，当小朋友情绪低落或遇到困难时，给予真诚的鼓励和支持。用积极乐观的方式帮助他们表达情感，建立自信心。',
+  custom:    ''
+};
+
+function applyTemplate(key) {
+  const ta = document.getElementById('system-prompt');
+  ta.value = promptTemplates[key] || '';
+  updateWordCount();
+  document.getElementById('template-list').classList.remove('open');
+  ta.focus();
+}
+
+// ── Word Count ────────────────────────────────
+function updateWordCount() {
+  const ta  = document.getElementById('system-prompt');
+  const wc  = document.getElementById('word-count');
+  const len = ta.value.length;
+  wc.textContent = len + ' 字';
+  wc.className = 'word-count' + (len > 500 ? ' over' : len > 350 ? ' warn' : '');
+}
+
+// Init count on load
+document.addEventListener('DOMContentLoaded', updateWordCount);
+
+
+// ── Sound Library ─────────────────────────────
+const voiceNames = {
+  'my-voice-1': '我的声音',
+  'sys-warm':   '温暖女声',
+  'f-1': '晴朗 · 活泼', 'f-2': '柔和 · 温柔', 'f-3': '清澈 · 知性', 'f-4': '甜美 · 俏皮',
+  'm-1': '朗朗 · 阳光', 'm-2': '沉稳 · 知识感', 'm-3': '幽默 · 风趣',
+  'en-1': 'Lily · 美式英语', 'en-2': 'Tom · 英式英语',
+  'ja-1': 'Hana · 日语', 'ko-1': 'Yuna · 韩语'
+};
+let currentVoice = 'my-voice-1';
+let editingVoiceId = '';
+let editingVoiceOldName = '';
+
+function selectVoice(card, id) {
+  // Remove selected from all cards in this subpage
+  document.querySelectorAll('#sub-sound-library .sound-card').forEach(c => {
+    c.classList.remove('selected');
+    const chk = c.querySelector('.sound-check');
+    if (chk) chk.remove();
+  });
+  // Select this one
+  card.classList.add('selected');
+  const right = card.querySelector('.sound-card-right');
+  if (!right.querySelector('.sound-check')) {
+    const chk = document.createElement('div');
+    chk.className = 'sound-check';
+    chk.textContent = '✓';
+    right.appendChild(chk);
+  }
+  currentVoice = id;
+  document.getElementById('sound-selected-label').textContent = '已选：' + (voiceNames[id] || id);
+}
+
+function confirmVoice() {
+  closeSubpage('sub-sound-library');
+  showToast('✅ 已使用「' + (voiceNames[currentVoice] || currentVoice) + '」');
+}
+
+function openEditVoiceName(voiceId, oldName) {
+  editingVoiceId = voiceId;
+  editingVoiceOldName = oldName;
+  document.getElementById('edit-voice-name-input').value = oldName;
+  openModal('modal-edit-voice-name');
+}
+
+function confirmEditVoiceName() {
+  const newName = document.getElementById('edit-voice-name-input').value.trim();
+  if (!newName) {
+    showToast('❌ 请输入声音名称');
+    return;
+  }
+  if (newName === editingVoiceOldName) {
+    closeModal('modal-edit-voice-name');
+    return;
+  }
+  voiceNames[editingVoiceId] = newName;
+  const cards = document.querySelectorAll('#sub-sound-library .sound-card');
+  cards.forEach(card => {
+    const info = card.querySelector('.sound-info');
+    const nameEl = info ? info.querySelector('.sound-name') : null;
+    if (nameEl && nameEl.textContent === editingVoiceOldName) {
+      nameEl.textContent = newName;
+    }
+  });
+  const selectedLabel = document.getElementById('sound-selected-label');
+  if (selectedLabel) {
+    selectedLabel.textContent = '已选：' + newName;
+  }
+  closeModal('modal-edit-voice-name');
+  showToast('✅ 已修改为「' + newName + '」');
+}
+
+function deleteVoice(voiceId) {
+  if (confirm('确定要删除这个声音吗？')) {
+    showToast('🗑️ 已删除「' + (voiceNames[voiceId] || voiceId) + '」');
+    const cards = document.querySelectorAll('#sub-sound-library .sound-card');
+    cards.forEach(card => {
+      if (card.dataset.voiceId === voiceId) {
+        card.remove();
+      }
+    });
+  }
+}
+
+function openCloneFlow() {
+  showToast('🎤 声音克隆功能开发中…');
+}
+
+
+// ── New Agent ─────────────────────────────────
+function toggleTemplatesNA() {
+  document.getElementById('na-template-list').classList.toggle('open');
+}
+function applyTemplateNA(key) {
+  const ta = document.getElementById('na-prompt');
+  ta.value = promptTemplates[key] || '';
+  updateWordCountNA();
+  document.getElementById('na-template-list').classList.remove('open');
+  ta.focus();
+}
+function updateWordCountNA() {
+  const ta = document.getElementById('na-prompt');
+  const wc = document.getElementById('na-word-count');
+  const len = ta.value.length;
+  wc.textContent = len + ' 字';
+  wc.className = 'word-count' + (len > 500 ? ' over' : len > 350 ? ' warn' : '');
+}
+function saveNewAgent() {
+  closeSubpage('sub-new-agent');
+  showToast('✅ 角色创建成功！');
+}
+
+// ── Memory toggle ──────────────────────────────
+function toggleMemory(el) {
+  el.classList.toggle('on');
+  const on = el.classList.contains('on');
+  showToast(on ? '🧠 记忆已开启' : '🔒 记忆已关闭');
+}
+function toggleMemoryKB() {
+  const t = document.getElementById('kb-memory-toggle');
+  t.classList.toggle('on');
+  const on = t.classList.contains('on');
+  document.getElementById('memory-tip').style.display = on ? 'block' : 'none';
+  showToast(on ? '🧠 记忆已开启' : '🔒 记忆已关闭');
+}
+
+// ── Clone voice flow ───────────────────────────
+let recordingInterval = null;
+let recordSecs = 0;
+let isRecording = false;
+let recordDone  = false;
+let cloneCount = 1;
+
+function goCloneStep(n) {
+  for (let i = 1; i <= 3; i++) {
+    const step  = document.getElementById('cstep-' + i);
+    const panel = document.getElementById('cpanel-' + i);
+    if (step)  { step.classList.remove('active','done'); }
+    if (panel) { panel.style.display = 'none'; }
+  }
+  // Mark done for previous steps
+  for (let i = 1; i < n; i++) {
+    const step = document.getElementById('cstep-' + i);
+    if (step) step.classList.add('done');
+  }
+  const cur = document.getElementById('cstep-' + n);
+  const pan = document.getElementById('cpanel-' + n);
+  if (cur) cur.classList.add('active');
+  if (pan) pan.style.display = 'block';
+
+  if (n === 3) startGenerating();
+}
+
+function toggleRecording() {
+  const btn    = document.getElementById('record-btn');
+  const waves  = document.getElementById('record-waves');
+  const timer  = document.getElementById('record-timer');
+  const hint   = document.getElementById('record-hint');
+  const status = document.getElementById('record-status');
+  const nextBtn= document.getElementById('clone-next-btn');
+  const inner  = document.getElementById('record-btn-inner');
+
+  if (!isRecording) {
+    // Start
+    isRecording = true; recordSecs = 0;
+    btn.classList.add('recording-active');
+    waves.classList.add('recording');
+    inner.textContent = '⏹';
+    hint.textContent  = '正在录音，请自然朗读…';
+    status.textContent = '录音中…';
+    recordingInterval = setInterval(() => {
+      recordSecs++;
+      const m = String(Math.floor(recordSecs/60)).padStart(2,'0');
+      const s = String(recordSecs % 60).padStart(2,'0');
+      timer.textContent = m + ':' + s;
+      if (recordSecs >= 30) stopRecording();
+    }, 1000);
+  } else {
+    stopRecording();
+  }
+}
+
+function stopRecording() {
+  clearInterval(recordingInterval);
+  isRecording = false; recordDone = true;
+  const btn    = document.getElementById('record-btn');
+  const waves  = document.getElementById('record-waves');
+  const hint   = document.getElementById('record-hint');
+  const status = document.getElementById('record-status');
+  const nextBtn= document.getElementById('clone-next-btn');
+  const inner  = document.getElementById('record-btn-inner');
+  const readText = document.getElementById('clone-read-text');
+  const verifyTip = document.getElementById('clone-verify-tip');
+  btn.classList.remove('recording-active');
+  waves.classList.remove('recording');
+  inner.textContent = '✅';
+  readText.classList.remove('error','success');
+  readText.classList.add('success');
+  hint.textContent  = '录制完成！可重新录制或继续';
+  verifyTip.style.display = 'block';
+  status.textContent = '录制完成 · ' + document.getElementById('record-timer').textContent;
+  nextBtn.style.opacity = '1';
+  nextBtn.style.pointerEvents = 'auto';
+}
+
+function verifyAndProceed() {
+  const readText = document.getElementById('clone-read-text');
+  const verifyTip = document.getElementById('clone-verify-tip');
+  if (!recordDone) {
+    showToast('❌ 请先完成录音');
+    return;
+  }
+  const isCorrect = Math.random() > 0.2;
+  if (!isCorrect) {
+    readText.classList.remove('success');
+    readText.classList.add('error');
+    verifyTip.style.display = 'block';
+    verifyTip.classList.remove('success');
+    verifyTip.classList.add('error');
+    verifyTip.innerHTML = '❌ 校验失败，请按照文本朗读';
+    showToast('❌ 校验失败，请按照文本朗读');
+    return;
+  }
+  verifyTip.style.display = 'none';
+  goCloneStep(3);
+}
+
+function startGenerating() {
+  const bar   = document.getElementById('gen-bar');
+  const title = document.getElementById('gen-title');
+  const sub   = document.getElementById('gen-sub');
+  let pct = 0;
+  const steps = [
+    [20, '正在分析声纹特征…'],
+    [45, '提取音色模型中…'],
+    [70, '生成个性化音色…'],
+    [90, '优化音质细节…'],
+    [100,'音色生成完成！'],
+  ];
+  let si = 0;
+  const iv = setInterval(() => {
+    if (si < steps.length) {
+      pct = steps[si][0];
+      sub.textContent = steps[si][1];
+      bar.style.width = pct + '%';
+      si++;
+    }
+    if (pct >= 100) {
+      clearInterval(iv);
+      title.textContent = '✅ 生成成功！';
+      const userName = cloneCount === 1 ? '明境用户' : '明境用户' + cloneCount;
+      cloneCount++;
+      voiceNames['my-voice-' + cloneCount] = userName;
+      setTimeout(() => {
+        closeSubpage('sub-clone-voice');
+        showToast('🎉 「' + userName + '」音色已生成！');
+        recordSecs = 0; isRecording = false; recordDone = false;
+        const timer = document.getElementById('record-timer');
+        if (timer) timer.textContent = '00:00';
+        const inner = document.getElementById('record-btn-inner');
+        if (inner) inner.textContent = '🎙️';
+        const readText = document.getElementById('clone-read-text');
+        if (readText) {
+          readText.classList.remove('error', 'success');
+        }
+        const verifyTip = document.getElementById('clone-verify-tip');
+        if (verifyTip) {
+          verifyTip.style.display = 'none';
+          verifyTip.classList.remove('error');
+          verifyTip.classList.add('');
+          verifyTip.innerHTML = '⚠️ 请朗读完整段文本后再点击完成';
+        }
+      }, 1200);
+    }
+  }, 700);
+}
+
+</script>
+</body>
+</html>

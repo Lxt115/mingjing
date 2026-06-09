@@ -16,8 +16,8 @@ interface NavItemConfig {
 }
 
 const mainNav: NavItemConfig[] = [
-  { path: '/agents', label: 'AI 伙伴', icon: '🤖', badge: 2 },
-  { path: '/history', label: '历史记录', icon: '💬', badge: 4 },
+  { path: '/agents', label: 'AI 伙伴', icon: '🤖' },
+  { path: '/history', label: '历史记录', icon: '💬' },
   { path: '/devices', label: '设备管理', icon: '📱' },
 ]
 

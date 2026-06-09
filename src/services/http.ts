@@ -1,15 +1,20 @@
-import axios, {
-  type AxiosInstance,
-  type AxiosError,
-  type InternalAxiosRequestConfig,
-} from 'axios'
+import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import type { ApiResponse } from '@/types'
+
+interface ValidationError {
+  loc?: string[]
+  msg?: string
+  type?: string
+}
+
+interface ErrorResponseBody {
+  detail?: ValidationError[] | string | unknown
+}
 
 function createHttpClient(): AxiosInstance {
   const instance = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000/api',
+    baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api',
     timeout: 15000,
-    headers: { 'Content-Type': 'application/json' },
   })
 
   instance.interceptors.request.use(
@@ -39,6 +44,14 @@ function createHttpClient(): AxiosInstance {
       }
       if (error.response?.status === 403) {
         return Promise.reject(new Error('权限不足'))
+      }
+      if (error.response?.status === 422) {
+        const body = error.response.data as ErrorResponseBody | undefined
+        const detail = body?.detail
+        const msg = Array.isArray(detail)
+          ? detail.map((d: ValidationError) => d.msg ?? JSON.stringify(d)).join('；')
+          : (detail as string) || '请求参数有误'
+        return Promise.reject(new Error(msg))
       }
       if (error.response?.status && error.response.status >= 500) {
         return Promise.reject(new Error('服务器异常，请稍后再试'))

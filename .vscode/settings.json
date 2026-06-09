@@ -1,6 +1,5 @@
 {
-  "defaultConfig": {
-  },
+  "defaultConfig": {},
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
@@ -11,5 +10,8 @@
   },
   "[typescript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  },
+  "idf.customExtraVars": {},
+  "idf.currentSetup": "D:\\Software\\esp\\.espressif\\v5.5.4\\esp-idf",
+  "idf.openOcdConfigs": ["board/esp32c3-builtin.cfg"]
 }

@@ -57,37 +57,15 @@ function openAddSpeaker() {
       >
         {{ pageTitle }}
       </h1>
-      <p
-        v-if="!isMobile"
-        class="text-xs text-[var(--text3)] font-medium mt-px"
-      >
+      <p v-if="!isMobile" class="text-xs text-[var(--text3)] font-medium mt-px">
         {{ pageSubtitle }}
       </p>
     </div>
 
     <div v-if="!isMobile" class="flex items-center gap-2.5">
-      <Button
-        v-if="route.path === '/agents'"
-        @click="openNewAgent"
-      >
-        ＋ 新建角色
-      </Button>
-      <Button
-        v-else-if="route.path === '/devices'"
-        @click="openAddDevice"
-      >
-        ➕ 添加设备
-      </Button>
-      <Button
-        v-else-if="route.path === '/knowledge'"
-        @click="openKbUpload"
-      >
-        ＋ 上传知识库
-      </Button>
-      <Button
-        v-else-if="route.path === '/voiceprint'"
-        @click="openAddSpeaker"
-      >
+      <Button v-if="route.path === '/agents'" @click="openNewAgent"> ＋ 新建角色 </Button>
+      <Button v-else-if="route.path === '/devices'" @click="openAddDevice"> ➕ 添加设备 </Button>
+      <Button v-else-if="route.path === '/voiceprint'" @click="openAddSpeaker">
         ＋ 添加说话人
       </Button>
       <Button
