@@ -27,9 +27,7 @@ onMounted(async () => {
 <template>
   <!-- Desktop Layout -->
   <div v-if="!isMobile" class="animate-[fadeIn_.25s_ease]">
-    <InfoTip>
-      通过声纹识别区分不同说话人，实现多用户安全访问
-    </InfoTip>
+    <InfoTip> 通过声纹识别区分不同说话人，实现多用户安全访问 </InfoTip>
 
     <div class="grid grid-cols-3 gap-3 mt-4">
       <div
@@ -51,7 +49,9 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        <div class="text-[11px] text-[var(--text3)] leading-relaxed mb-3">{{ speaker.description }}</div>
+        <div class="text-[11px] text-[var(--text3)] leading-relaxed mb-3">
+          {{ speaker.description }}
+        </div>
         <button
           class="w-full h-8 rounded-lg bg-transparent text-[var(--coral)] border border-[var(--coral)]/30 text-xs font-extrabold cursor-pointer transition-all duration-200 hover:bg-[rgba(255,107,107,.05)]"
           @click="removeSpeaker(speaker)"
@@ -65,7 +65,9 @@ onMounted(async () => {
   <!-- Mobile Layout -->
   <div v-else class="flex flex-col h-full">
     <div class="px-2 py-3">
-      <div class="bg-[#f0f4ff] text-[var(--indigo)] text-xs px-3.5 py-2.5 rounded-[12px] font-bold leading-[1.6]">
+      <div
+        class="bg-[#f0f4ff] text-[var(--indigo)] text-xs px-3.5 py-2.5 rounded-[12px] font-bold leading-[1.6]"
+      >
         💡 通过声纹识别区分不同说话人，实现多用户安全访问
       </div>
     </div>
@@ -99,7 +101,10 @@ onMounted(async () => {
           <div>
             <div class="flex items-center gap-1.5 mb-[3px]">
               <span class="text-sm font-extrabold text-[var(--text1)]">{{ speaker.name }}</span>
-              <span class="text-[10px] text-[var(--teal)] font-extrabold px-1.5 py-0.5 rounded-[20px]" :class="speaker.verified ? 'bg-[#e8fdf5]' : 'bg-[var(--bg2)]'">
+              <span
+                class="text-[10px] text-[var(--teal)] font-extrabold px-1.5 py-0.5 rounded-[20px]"
+                :class="speaker.verified ? 'bg-[#e8fdf5]' : 'bg-[var(--bg2)]'"
+              >
                 {{ speaker.verified ? '✅ 已认证' : '待认证' }}
               </span>
             </div>
@@ -117,9 +122,4 @@ onMounted(async () => {
   </div>
 </template>
 
-<style scoped>
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-</style>
+<style scoped></style>

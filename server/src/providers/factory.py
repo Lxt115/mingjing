@@ -12,22 +12,55 @@ _tts: TTSProvider | None = None
 def get_stt() -> STTProvider:
     global _stt
     if _stt is None:
-        from src.providers.stt.bailian import BailianSTTProvider
-        _stt = BailianSTTProvider()
+        _stt = _create_stt(settings.stt_provider)
     return _stt
 
 
 def get_llm() -> LLMProvider:
     global _llm
     if _llm is None:
-        from src.providers.llm.bailian import BailianLLMProvider
-        _llm = BailianLLMProvider()
+        _llm = _create_llm(settings.llm_provider)
     return _llm
 
 
 def get_tts() -> TTSProvider:
     global _tts
     if _tts is None:
-        from src.providers.tts.bailian import BailianTTSProvider
-        _tts = BailianTTSProvider()
+        _tts = _create_tts(settings.tts_provider)
     return _tts
+
+
+def _create_stt(name: str) -> STTProvider:
+    if name == "bailian":
+        from src.providers.stt.bailian import BailianSTTProvider
+        return BailianSTTProvider()
+    elif name == "openai":
+        from src.providers.stt.openai_whisper import OpenAIWhisperSTTProvider
+        return OpenAIWhisperSTTProvider()
+    else:
+        raise ValueError(f"Unknown STT provider: {name}")
+
+
+def _create_llm(name: str) -> LLMProvider:
+    if name == "bailian":
+        from src.providers.llm.bailian import BailianLLMProvider
+        return BailianLLMProvider()
+    elif name == "openai":
+        from src.providers.llm.openai_llm import OpenAILLMProvider
+        return OpenAILLMProvider()
+    elif name == "deepseek":
+        from src.providers.llm.deepseek import DeepSeekLLMProvider
+        return DeepSeekLLMProvider()
+    else:
+        raise ValueError(f"Unknown LLM provider: {name}")
+
+
+def _create_tts(name: str) -> TTSProvider:
+    if name == "bailian":
+        from src.providers.tts.bailian import BailianTTSProvider
+        return BailianTTSProvider()
+    elif name == "edge":
+        from src.providers.tts.edge_tts import EdgeTTSProvider
+        return EdgeTTSProvider()
+    else:
+        raise ValueError(f"Unknown TTS provider: {name}")

@@ -55,11 +55,15 @@ onMounted(() => {
             <div class="flex items-center gap-2 mb-1">
               <span class="text-[17px] font-black text-[var(--text1)]">{{ agent.name }}</span>
             </div>
-            <div class="text-[13px] text-[var(--text2)] leading-relaxed mb-2.5 line-clamp-2">{{ agent.systemPrompt }}</div>
+            <div class="text-[13px] text-[var(--text2)] leading-relaxed mb-2.5 line-clamp-2">
+              {{ agent.systemPrompt }}
+            </div>
           </div>
         </div>
 
-        <div class="flex items-center justify-between px-5 py-3 border-t border-[var(--border)] bg-[var(--bg)]">
+        <div
+          class="flex items-center justify-between px-5 py-3 border-t border-[var(--border)] bg-[var(--bg)]"
+        >
           <div
             :class="[
               'flex items-center gap-1.5 text-xs font-bold',
@@ -72,7 +76,11 @@ onMounted(() => {
                 agent.boundDeviceIds.length > 0 ? 'bg-[var(--teal)]' : 'bg-[var(--text3)]',
               ]"
             />
-            {{ agent.boundDeviceIds.length > 0 ? `已绑定设备（${agent.boundDeviceIds.length}）` : '暂未绑定设备' }}
+            {{
+              agent.boundDeviceIds.length > 0
+                ? `已绑定设备（${agent.boundDeviceIds.length}）`
+                : '暂未绑定设备'
+            }}
           </div>
           <div class="flex gap-2">
             <button
@@ -95,10 +103,14 @@ onMounted(() => {
         class="bg-[var(--surface)] rounded-[var(--radius-lg)] border-2 border-dashed border-[var(--border)] flex flex-col items-center justify-center gap-2.5 py-10 px-5 cursor-pointer transition-all duration-200 min-h-[200px] hover:bg-[var(--bg)] hover:border-[var(--coral-lt)] group"
         @click="ui.openModal('modal-agent-config', { mode: 'create' })"
       >
-        <div class="w-12 h-12 rounded-2xl bg-[var(--bg2)] text-[var(--text3)] flex items-center justify-center text-[22px] transition-all duration-200 group-hover:bg-[rgba(255,107,107,.12)] group-hover:text-[var(--coral)]">
+        <div
+          class="w-12 h-12 rounded-2xl bg-[var(--bg2)] text-[var(--text3)] flex items-center justify-center text-[22px] transition-all duration-200 group-hover:bg-[rgba(255,107,107,.12)] group-hover:text-[var(--coral)]"
+        >
           ＋
         </div>
-        <div class="text-sm font-bold text-[var(--text3)] transition-colors duration-200 group-hover:text-[var(--coral)]">
+        <div
+          class="text-sm font-bold text-[var(--text3)] transition-colors duration-200 group-hover:text-[var(--coral)]"
+        >
           新建角色
         </div>
         <div class="text-xs text-[var(--text3)] text-center max-w-[180px] leading-relaxed">
@@ -127,7 +139,11 @@ onMounted(() => {
           </div>
           <div class="flex-1 min-w-0">
             <div class="text-base font-black text-[var(--text1)] mb-1">{{ agent.name }}</div>
-            <div class="text-xs text-[var(--text3)] leading-relaxed mb-2 whitespace-nowrap overflow-hidden text-ellipsis">{{ agent.systemPrompt }}</div>
+            <div
+              class="text-xs text-[var(--text3)] leading-relaxed mb-2 whitespace-nowrap overflow-hidden text-ellipsis"
+            >
+              {{ agent.systemPrompt }}
+            </div>
           </div>
         </div>
         <div class="flex flex-col items-end gap-2 shrink-0">
@@ -158,16 +174,15 @@ onMounted(() => {
         class="flex flex-col items-center gap-2 py-5 cursor-pointer bg-[var(--surface)] rounded-[var(--radius-md)] border-2 border-dashed border-[var(--border)] transition-all duration-200 active:scale-[.97]"
         @click="ui.openModal('modal-agent-config', { mode: 'create' })"
       >
-        <div class="w-10 h-10 rounded-2xl bg-[var(--bg2)] text-[var(--text3)] flex items-center justify-center text-xl">＋</div>
+        <div
+          class="w-10 h-10 rounded-2xl bg-[var(--bg2)] text-[var(--text3)] flex items-center justify-center text-xl"
+        >
+          ＋
+        </div>
         <div class="text-sm font-bold text-[var(--text3)]">新建角色</div>
       </div>
     </div>
   </div>
 </template>
 
-<style scoped>
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-</style>
+<style scoped></style>

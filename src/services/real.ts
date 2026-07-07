@@ -15,10 +15,6 @@ import type {
   UserProfile,
 } from '@/types'
 
-function extractData<T>(res: { data: ApiResponse<T> }): T {
-  return res.data.data
-}
-
 function unwrap<T>(promise: Promise<{ data: ApiResponse<T> }>): Promise<ApiResponse<T>> {
   return promise.then((res) => res.data)
 }

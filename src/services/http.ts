@@ -45,6 +45,12 @@ function createHttpClient(): AxiosInstance {
       if (error.response?.status === 403) {
         return Promise.reject(new Error('权限不足'))
       }
+      if (error.response?.status === 404) {
+        const body = error.response.data as ErrorResponseBody | undefined
+        return Promise.reject(
+          new Error(typeof body?.detail === 'string' ? body.detail : '资源不存在'),
+        )
+      }
       if (error.response?.status === 422) {
         const body = error.response.data as ErrorResponseBody | undefined
         const detail = body?.detail

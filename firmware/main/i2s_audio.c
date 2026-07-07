@@ -40,7 +40,7 @@ void audio_init(int bck_io, int ws_io, int din_io, int dout_io) {
     gpio_set_direction(PA_EN_PIN, GPIO_MODE_OUTPUT);
     gpio_set_level(PA_EN_PIN, 0);
 
-    /* ── 3. I2S duplex channels (aligned with xiaozhi Es8311AudioCodec::CreateDuplexChannels) ── */
+    /* ── 3. I2S duplex channels  ── */
     i2s_chan_config_t chan_cfg = {
         .id = I2S_NUM_0,
         .role = I2S_ROLE_MASTER,
@@ -131,7 +131,7 @@ void audio_init(int bck_io, int ws_io, int din_io, int dout_io) {
     };
     ESP_ERROR_CHECK(esp_codec_dev_open(s_codec_dev, &fs));
     esp_codec_dev_set_in_gain(s_codec_dev, 30.0f);
-    esp_codec_dev_set_out_vol(s_codec_dev, 70);
+    esp_codec_dev_set_out_vol(s_codec_dev, 100);  /* 扬声器输出音量，范围 0-100 */
 
     ESP_LOGI(TAG, "ES8311+I2S ready, SR=%d", DEVICE_AUDIO_SAMPLE_RATE);
 }
@@ -145,7 +145,7 @@ void audio_deinit(void) {
     if (s_i2c_bus)   { i2c_del_master_bus(s_i2c_bus); s_i2c_bus = NULL; }
 }
 
-/* ── Record: esp_codec_dev_read (compatible with xiaozhi pattern) ── */
+/* ── Record: esp_codec_dev_read ── */
 
 void i2s_record_start(void) {
     if (s_codec_if && s_codec_if->mute) s_codec_if->mute(s_codec_if, true);
@@ -186,4 +186,8 @@ int i2s_playback_write(const uint8_t *data, int len) {
     if (!s_codec_dev || !s_playing) return 0;
     /* esp_codec_dev_write → data_if → I2S TX → ES8311 DACDAT → DAC → analog out → NS4150 → speaker */
     return esp_codec_dev_write(s_codec_dev, (void *)data, len);
+}
+
+i2c_master_bus_handle_t i2s_audio_get_i2c_bus(void) {
+    return s_i2c_bus;
 }

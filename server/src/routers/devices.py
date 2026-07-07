@@ -27,7 +27,9 @@ async def get_device(device_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 
 @router.post("/bind", status_code=201)
 async def bind_device(body: DeviceBindRequest, db: AsyncSession = Depends(get_db)):
-    device = await services.devices.bind_device(db, body.code, body.agentId)
+    device = await services.devices.bind_device(db, body.code, body.agent_id)
+    if not device:
+        raise HTTPException(status_code=404, detail="绑定码无效或设备未上线")
     return ApiResponse(data=device, timestamp=time.time())
 
 
@@ -41,6 +43,7 @@ async def unbind_device(device_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 
 @router.put("/{device_id}/role")
 async def assign_role(device_id: uuid.UUID, body: DeviceAssignRoleRequest, db: AsyncSession = Depends(get_db)):
+    print(f"[ROLE] device={str(device_id)[-8:]} agent_id={body.agent_id}", flush=True)
     device = await services.devices.assign_role(db, device_id, body.agent_id)
     if not device:
         raise HTTPException(status_code=404, detail="设备不存在")

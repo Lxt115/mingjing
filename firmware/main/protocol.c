@@ -20,6 +20,10 @@ int proto_build_audio_end(char *buf, int max_len) {
     return snprintf(buf, max_len, "{\"type\":\"audio_end\"}");
 }
 
+int proto_build_abort(char *buf, int max_len) {
+    return snprintf(buf, max_len, "{\"type\":\"abort\"}");
+}
+
 bool proto_parse(const char *json_str, int len, proto_msg_t *out) {
     memset(out, 0, sizeof(*out));
     out->type = PROTO_MSG_UNKNOWN;
@@ -58,6 +62,8 @@ bool proto_parse(const char *json_str, int len, proto_msg_t *out) {
         cJSON *msg = cJSON_GetObjectItem(root, "message");
         if (msg && cJSON_IsString(msg))
             strncpy(out->text, msg->valuestring, sizeof(out->text) - 1);
+    } else if (strcmp(t, "abort") == 0) {
+        out->type = PROTO_MSG_ABORT;
     }
 
     cJSON_Delete(root);

@@ -8,14 +8,19 @@ const { close } = useModal()
 const ui = useUiStore()
 const devicesStore = useDevicesStore()
 
-const device = computed(() => ui.modalData.device as Device | undefined)
+const device = computed(() => {
+  const d = ui.modalData?.device as Device | undefined
+  return d && d.name ? d : undefined
+})
 
 async function confirmUnbind() {
   if (!device.value) return
+  const deviceName = device.value.name
+  const deviceId = device.value.id
   try {
-    await devicesStore.unbindDevice(device.value.id)
+    await devicesStore.unbindDevice(deviceId)
     close()
-    ui.showToast(`✅ 「${device.value.name}」已解绑`)
+    ui.showToast(`✅ 「${deviceName}」已解绑`)
   } catch (e) {
     ui.showToast(e instanceof Error ? e.message : '❌ 解绑失败', 'error')
   }

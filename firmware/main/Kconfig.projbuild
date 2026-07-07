@@ -1,16 +1,14 @@
 menu "Aidoll Device Configuration"
 
-config DEVICE_WIFI_SSID
-    string "WiFi SSID"
-    default "YOUR_WIFI_SSID"
-    help
-        The SSID of the Wi-Fi network to connect to.
+# WiFi 凭据现在通过 NVS + 网页配网管理，不再需要编译期配置
+# 设备首次启动会自动进入 AP 配网模式 (SSID: Aidoll-Config)
 
-config DEVICE_WIFI_PASSWORD
-    string "WiFi Password"
-    default "YOUR_WIFI_PASSWORD"
+config DEVICE_ID
+    string "Device ID (UUID)"
+    default "d1000000-0000-0000-0000-000000000001"
     help
-        The password of the Wi-Fi network.
+        Unique identifier for this device. Used for the WebSocket
+        device management channel (/ws/device/{id}).
 
 config DEVICE_AGENT_ID
     string "Agent ID"

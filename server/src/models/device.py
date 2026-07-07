@@ -16,5 +16,6 @@ class Device(Base, TimestampMixin):
     ota_status: Mapped[str] = mapped_column(String(20), default="latest")
     auto_upgrade: Mapped[bool] = mapped_column(Boolean, default=False)
     bound_agent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("agents.id", ondelete="SET NULL"), nullable=True)
+    bind_code: Mapped[str | None] = mapped_column(String(6), nullable=True, default=None)
 
     agent = relationship("Agent", back_populates="devices", lazy="selectin")

@@ -10,7 +10,7 @@ const ui = useUiStore()
 const { isMobile } = useMediaQuery()
 
 function openUnbind(device: Device) {
-  ui.openModal('modal-unbind-confirm', { deviceId: device.id, deviceName: device.name })
+  ui.openModal('modal-unbind-confirm', { device })
 }
 
 function triggerOTA(device: Device) {
@@ -70,22 +70,26 @@ onMounted(() => {
 
         <div class="grid grid-cols-2 gap-3 mb-4">
           <div>
-            <div class="text-[10px] font-extrabold text-[var(--text3)] tracking-[.4px] uppercase mb-1">固件版本</div>
+            <div
+              class="text-[10px] font-extrabold text-[var(--text3)] tracking-[.4px] uppercase mb-1"
+            >
+              固件版本
+            </div>
             <div class="text-sm font-black text-[var(--text1)]">{{ device.firmwareVersion }}</div>
           </div>
           <div>
-            <div class="text-[10px] font-extrabold text-[var(--text3)] tracking-[.4px] uppercase mb-1">绑定角色</div>
+            <div
+              class="text-[10px] font-extrabold text-[var(--text3)] tracking-[.4px] uppercase mb-1"
+            >
+              绑定角色
+            </div>
             <select
               class="text-sm font-bold border border-[var(--border)] rounded-lg py-1.5 px-2.5 bg-[var(--bg)] text-[var(--text1)] cursor-pointer outline-none focus:border-[var(--coral)] w-full"
               :value="device.boundAgentId"
               @change="updateRole(device.id, $event)"
             >
               <option value="">未指定</option>
-              <option
-                v-for="agent in agentsStore.agents"
-                :key="agent.id"
-                :value="agent.id"
-              >
+              <option v-for="agent in agentsStore.agents" :key="agent.id" :value="agent.id">
                 {{ agent.name }}
               </option>
             </select>
@@ -147,24 +151,28 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="flex items-center justify-between mb-3 py-2.5 px-3 bg-[var(--bg)] rounded-[10px]">
+        <div
+          class="flex items-center justify-between mb-3 py-2.5 px-3 bg-[var(--bg)] rounded-[10px]"
+        >
           <div>
-            <div class="text-[10px] font-extrabold text-[var(--text3)] tracking-[.4px] mb-[3px]">固件</div>
-            <div class="text-[13px] font-black text-[var(--text1)]">{{ device.firmwareVersion }}</div>
+            <div class="text-[10px] font-extrabold text-[var(--text3)] tracking-[.4px] mb-[3px]">
+              固件
+            </div>
+            <div class="text-[13px] font-black text-[var(--text1)]">
+              {{ device.firmwareVersion }}
+            </div>
           </div>
           <div>
-            <div class="text-[10px] font-extrabold text-[var(--text3)] tracking-[.4px] mb-[3px]">角色</div>
+            <div class="text-[10px] font-extrabold text-[var(--text3)] tracking-[.4px] mb-[3px]">
+              角色
+            </div>
             <select
               class="text-[13px] font-bold bg-transparent border-none text-[var(--text1)] cursor-pointer outline-none"
               :value="device.boundAgentId"
               @change="updateRole(device.id, $event)"
             >
               <option value="">未指定</option>
-              <option
-                v-for="agent in agentsStore.agents"
-                :key="agent.id"
-                :value="agent.id"
-              >
+              <option v-for="agent in agentsStore.agents" :key="agent.id" :value="agent.id">
                 {{ agent.name }}
               </option>
             </select>
@@ -191,9 +199,4 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-</style>
+<style scoped></style>

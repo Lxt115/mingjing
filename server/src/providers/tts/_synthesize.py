@@ -1,5 +1,6 @@
 # type: ignore
 import asyncio
+import threading
 from collections.abc import AsyncGenerator
 
 import dashscope
@@ -49,10 +50,13 @@ async def synthesize_speech_streaming(
 
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue = asyncio.Queue()
+    # 对应 xiaozhi 的 client_abort 标志：用于通知后台 TTS 回调停止入队
+    stop_event = threading.Event()
 
     class StreamCallback(ResultCallback):
         def on_data(self, data: bytes) -> None:
-            asyncio.run_coroutine_threadsafe(queue.put(("chunk", data)), loop)
+            if not stop_event.is_set():
+                asyncio.run_coroutine_threadsafe(queue.put(("chunk", data)), loop)
 
         def on_complete(self):
             asyncio.run_coroutine_threadsafe(queue.put(("done", None)), loop)
@@ -76,11 +80,16 @@ async def synthesize_speech_streaming(
 
     loop.run_in_executor(None, _tts_run)
 
-    while True:
-        msg_type, data = await queue.get()
-        if msg_type == "chunk":
-            yield data
-        elif msg_type == "error":
-            raise RuntimeError(f"TTS streaming error: {data}")
-        elif msg_type == "done":
-            return
+    try:
+        while True:
+            msg_type, data = await queue.get()
+            if msg_type == "chunk":
+                yield data
+            elif msg_type == "error":
+                raise RuntimeError(f"TTS streaming error: {data}")
+            elif msg_type == "done":
+                return
+    finally:
+        # 对应 xiaozhi 的 clear_queues：当异步生成器被废弃时（Task 被 cancel），
+        # 通知后台 TTS 线程停止向 queue 写入新数据
+        stop_event.set()

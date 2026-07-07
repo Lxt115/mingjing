@@ -44,20 +44,26 @@ onMounted(async () => {
         @click="ui.openModal('modal-clone-voice')"
       >
         <div class="flex items-center gap-4">
-          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-[var(--coral)] to-[#FF8E53] flex items-center justify-center text-[22px]">
+          <div
+            class="w-12 h-12 rounded-2xl bg-gradient-to-br from-[var(--coral)] to-[#FF8E53] flex items-center justify-center text-[22px]"
+          >
             🎤
           </div>
           <div>
             <div class="text-base font-black text-[var(--text1)] mb-1">克隆我的声音</div>
-            <div class="text-xs text-[var(--text3)] leading-relaxed">录制 3 段短文本，AI 即可学习你的音色</div>
+            <div class="text-xs text-[var(--text3)] leading-relaxed">
+              录制 3 段短文本，AI 即可学习你的音色
+            </div>
           </div>
         </div>
-        <div class="text-[var(--coral)] text-xs font-extrabold px-4 py-2 rounded-lg bg-[rgba(255,107,107,.1)]">
+        <div
+          class="text-[var(--coral)] text-xs font-extrabold px-4 py-2 rounded-lg bg-[rgba(255,107,107,.1)]"
+        >
           开始录制 →
         </div>
       </div>
 
-      <Tabs :tabs="tabs" v-model="activeTab" />
+      <Tabs v-model="activeTab" :tabs="tabs" />
 
       <div class="mt-4 grid grid-cols-3 gap-3">
         <div
@@ -77,7 +83,11 @@ onMounted(async () => {
               {{ voice.emoji }}
             </div>
             <div class="flex-1 min-w-0">
-              <div class="text-sm font-extrabold text-[var(--text1)] whitespace-nowrap overflow-hidden text-ellipsis">{{ voice.name }}</div>
+              <div
+                class="text-sm font-extrabold text-[var(--text1)] whitespace-nowrap overflow-hidden text-ellipsis"
+              >
+                {{ voice.name }}
+              </div>
               <div class="text-[11px] text-[var(--text3)]">{{ voice.category }}</div>
             </div>
             <div
@@ -119,13 +129,21 @@ onMounted(async () => {
       @click="ui.openModal('modal-clone-voice')"
     >
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-[var(--coral)] flex items-center justify-center text-lg">🎤</div>
+        <div
+          class="w-10 h-10 rounded-xl bg-[var(--coral)] flex items-center justify-center text-lg"
+        >
+          🎤
+        </div>
         <div>
           <div class="text-sm font-extrabold text-[var(--text1)]">克隆我的声音</div>
           <div class="text-xs text-[var(--text3)]">录制 3 段短文本即可学习你的音色</div>
         </div>
       </div>
-      <div class="text-[var(--coral)] text-xs font-extrabold px-3 py-1.5 rounded-[20px] bg-[rgba(255,107,107,.12)]">录制 →</div>
+      <div
+        class="text-[var(--coral)] text-xs font-extrabold px-3 py-1.5 rounded-[20px] bg-[rgba(255,107,107,.12)]"
+      >
+        录制 →
+      </div>
     </div>
 
     <div class="tabs-mobile flex gap-1 px-4 pt-3 pb-4">
@@ -134,7 +152,9 @@ onMounted(async () => {
         :key="tab.id"
         :class="[
           'flex-1 py-2 px-0 rounded-[20px] text-center text-xs font-extrabold transition-all duration-200 cursor-pointer',
-          activeTab === tab.id ? 'bg-[var(--coral)] text-white' : 'bg-[var(--bg2)] text-[var(--text2)]',
+          activeTab === tab.id
+            ? 'bg-[var(--coral)] text-white'
+            : 'bg-[var(--bg2)] text-[var(--text2)]',
         ]"
         @click="activeTab = tab.id"
       >
@@ -163,11 +183,20 @@ onMounted(async () => {
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-[3px]">
                 <span class="text-[15px] font-extrabold text-[var(--text1)]">{{ voice.name }}</span>
-                <span class="text-[11px] font-bold text-[var(--text3)] bg-[var(--bg)] px-2 py-0.5 rounded-[20px]">{{ voice.category }}</span>
+                <span
+                  class="text-[11px] font-bold text-[var(--text3)] bg-[var(--bg)] px-2 py-0.5 rounded-[20px]"
+                  >{{ voice.category }}</span
+                >
               </div>
               <div class="flex gap-1">
-                <span class="text-[11px] text-[var(--text3)] bg-[var(--bg2)] px-2 py-0.5 rounded-[20px] font-bold">{{ voice.language }}</span>
-                <span class="text-[11px] text-[var(--text3)] bg-[var(--bg2)] px-2 py-0.5 rounded-[20px] font-bold">{{ voice.style }}</span>
+                <span
+                  class="text-[11px] text-[var(--text3)] bg-[var(--bg2)] px-2 py-0.5 rounded-[20px] font-bold"
+                  >{{ voice.language }}</span
+                >
+                <span
+                  class="text-[11px] text-[var(--text3)] bg-[var(--bg2)] px-2 py-0.5 rounded-[20px] font-bold"
+                  >{{ voice.style }}</span
+                >
               </div>
             </div>
           </div>
@@ -190,10 +219,12 @@ onMounted(async () => {
     </div>
 
     <div
-      v-if="voices.some(v => v.selected)"
+      v-if="voices.some((v) => v.selected)"
       class="fixed bottom-20 left-0 right-0 px-4 py-3 bg-white/95 backdrop-blur-[12px] border-t border-[var(--border)] flex items-center justify-between z-40"
     >
-      <span class="text-sm font-extrabold text-[var(--text1)]">已选 {{ voices.filter(v => v.selected).length }} 个声音</span>
+      <span class="text-sm font-extrabold text-[var(--text1)]"
+        >已选 {{ voices.filter((v) => v.selected).length }} 个声音</span
+      >
       <button
         class="py-2 px-5 rounded-[10px] bg-[var(--coral)] text-white border-none text-sm font-extrabold cursor-pointer transition-all duration-200 active:scale-[.95]"
         @click="confirmSelection"
@@ -204,9 +235,4 @@ onMounted(async () => {
   </div>
 </template>
 
-<style scoped>
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-</style>
+<style scoped></style>

@@ -8,7 +8,7 @@ from fastapi import WebSocket
 @dataclass
 class Connection:
     websocket: WebSocket
-    agent_id: uuid.UUID
+    agent_id: uuid.UUID | None = None
     device_id: uuid.UUID | None = None
     audio_chunks: list[bytes] = field(default_factory=list)
     is_recording: bool = False
@@ -20,7 +20,7 @@ class ConnectionManager:
         self._connections: dict[WebSocket, Connection] = {}
         self._device_map: dict[str, Connection] = {}
 
-    async def connect(self, ws: WebSocket, agent_id: uuid.UUID, device_id: uuid.UUID | None = None) -> Connection:
+    async def connect(self, ws: WebSocket, agent_id: uuid.UUID | None, device_id: uuid.UUID | None = None) -> Connection:
         await ws.accept()
         conn = Connection(websocket=ws, agent_id=agent_id, device_id=device_id)
         self._connections[ws] = conn

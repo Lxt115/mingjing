@@ -6,7 +6,6 @@ from sqlalchemy.orm import selectinload
 from src.ws.manager import manager
 from src.database import async_session_factory
 from src.models.device import Device
-from src.services import pipeline
 
 
 async def handle_device(ws: WebSocket, device_id: str):
@@ -23,18 +22,79 @@ async def handle_device(ws: WebSocket, device_id: str):
         )
         device = result.scalar_one_or_none()
         if not device:
-            await ws.close(code=1008, reason="device not found")
-            return
-
-        agent_id = device.bound_agent_id
-
-        device.status = "online"
-        await db.commit()
+            # 自动注册（pending 状态，绑定码等 firmware 上报）
+            device = Device(
+                id=device_uuid,
+                name=f"设备-{str(device_uuid)[-4:]}",
+                mac=str(device_uuid)[:17],
+                status="pending",
+                bind_code=None,
+            )
+            db.add(device)
+            await db.commit()
+            await db.refresh(device)
+            agent_id = None
+        else:
+            agent_id = device.bound_agent_id
+            device.status = "online"
+            await db.commit()
 
     if not agent_id:
-        await ws.close(code=1008, reason="no agent bound")
+        # 设备未绑定角色：等 firmware 上报 device_info（含绑定码）后再发 welcome
+        conn = await manager.connect(ws, None, device_uuid)
+
+        # 等第一条 device_info
+        try:
+            while True:
+                raw = await ws.receive()
+                if raw["type"] == "websocket.disconnect":
+                    return
+                if "text" in raw:
+                    try:
+                        msg = json.loads(raw["text"])
+                        if msg.get("type") == "device_info" and msg.get("bind_code"):
+                            async with async_session_factory() as db2:
+                                result = await db2.execute(select(Device).where(Device.id == device_uuid))
+                                dev = result.scalar_one_or_none()
+                                if dev:
+                                    dev.bind_code = msg["bind_code"]
+                                    await db2.commit()
+                            # 拿到真实绑定码后发送 welcome
+                            await manager.send_json(ws, {
+                                "type": "welcome",
+                                "device_id": str(device_uuid),
+                                "agent_id": None,
+                                "bind_code": msg["bind_code"],
+                                "mac": device.mac,
+                                "firmware_version": device.firmware_version,
+                            })
+                            break
+                    except json.JSONDecodeError:
+                        pass
+                    except Exception as e:
+                        print(f"[device] device_info error: {e}")
+        except WebSocketDisconnect:
+            pass
+
+        # 已拿到绑定码，wait_for 保持连接
+        try:
+            while True:
+                raw = await ws.receive()
+                if raw["type"] == "websocket.disconnect":
+                    break
+        except WebSocketDisconnect:
+            pass
+        finally:
+            async with async_session_factory() as db3:
+                result = await db3.execute(select(Device).where(Device.id == device_uuid))
+                dev = result.scalar_one_or_none()
+                if dev:
+                    dev.status = "offline"
+                    await db3.commit()
+            manager.disconnect(ws)
         return
 
+    # 设备已绑定，仅保持管理连接（在线状态 + 接收 agent_switch）
     conn = await manager.connect(ws, agent_id, device_uuid)
     await manager.send_json(ws, {
         "type": "welcome",
@@ -43,98 +103,17 @@ async def handle_device(ws: WebSocket, device_id: str):
         "mac": device.mac,
         "firmware_version": device.firmware_version,
     })
-
+    # 已绑定的设备上线时，主动推送 agent_switch 让板子重连正确的语音通道
+    await manager.send_json(ws, {
+        "type": "agent_switch",
+        "agent_id": str(agent_id),
+    })
+    print(f"[device] bound device online, pushed agent_switch → {str(agent_id)[:8]}... to {str(device_uuid)[-8:]}")
     try:
-        async for raw in ws.iter_text():
-            try:
-                msg = json.loads(raw)
-            except json.JSONDecodeError:
-                continue
-
-            msg_type = msg.get("type", "")
-
-            if msg_type == "button_press":
-                conn.audio_chunks = []
-                conn.is_recording = True
-                await manager.send_json(ws, {"type": "status", "message": "listening"})
-
-            elif msg_type == "audio_chunk":
-                if conn.is_recording:
-                    data = msg.get("data", "")
-                    if data:
-                        import base64
-                        try:
-                            conn.audio_chunks.append(base64.b64decode(data))
-                        except Exception:
-                            pass
-
-            elif msg_type == "button_release":
-                if not conn.is_recording:
-                    continue
-                conn.is_recording = False
-
-                if not conn.audio_chunks:
-                    await manager.send_json(ws, {"type": "status", "message": "no_audio"})
-                    continue
-
-                audio_bytes = b"".join(conn.audio_chunks)
-                conn.audio_chunks = []
-
-                await manager.send_json(ws, {"type": "status", "message": "processing"})
-
-                async with async_session_factory() as db2:
-                    try:
-                        async for event in pipeline.speech_pipeline_stream(
-                            db2, audio_bytes, "pcm", agent_id, conn.conversation_id,
-                        ):
-                            event_type = event["type"]
-
-                            if event_type == "transcript":
-                                await manager.send_json(ws, {
-                                    "type": "transcript",
-                                    "text": event["content"],
-                                })
-
-                            elif event_type == "text_chunk":
-                                await manager.send_json(ws, {
-                                    "type": "text_chunk",
-                                    "content": event["content"],
-                                })
-
-                            elif event_type == "error":
-                                await manager.send_json(ws, {
-                                    "type": "error",
-                                    "message": event["message"],
-                                })
-                                return
-
-                            elif event_type == "audio":
-                                conn.conversation_id = uuid_mod.UUID(event["conversation_id"])
-                                await manager.send_json(ws, {
-                                    "type": "response",
-                                    "text": "",
-                                    "audio": event["audio"],
-                                    "audio_format": event["audio_format"],
-                                    "audio_error": event.get("audio_error", ""),
-                                    "conversation_id": event["conversation_id"],
-                                })
-
-                            elif event_type == "done":
-                                pass
-
-                    except Exception as e:
-                        await manager.send_json(ws, {"type": "error", "message": str(e)})
-
-            elif msg_type == "status":
-                await manager.send_json(ws, {
-                    "type": "status_ack",
-                    "battery": msg.get("battery", -1),
-                    "wifi_rssi": msg.get("wifi_rssi", -1),
-                })
-
-            elif msg_type == "ping":
-                await manager.send_json(ws, {"type": "pong"})
-
+        while True:
+            raw = await ws.receive()
+            if raw["type"] == "websocket.disconnect":
+                break
     except WebSocketDisconnect:
         pass
     finally:

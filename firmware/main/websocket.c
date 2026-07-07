@@ -8,6 +8,7 @@ static const char *TAG = "websocket";
 static esp_websocket_client_handle_t s_client = NULL;
 static ws_on_text_cb_t s_on_text = NULL;
 static ws_on_binary_cb_t s_on_binary = NULL;
+static ws_on_state_cb_t s_on_state = NULL;
 static bool s_connected = false;
 
 static void websocket_event_handler(void *arg, esp_event_base_t event_base,
@@ -18,10 +19,12 @@ static void websocket_event_handler(void *arg, esp_event_base_t event_base,
     case WEBSOCKET_EVENT_CONNECTED:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_CONNECTED");
         s_connected = true;
+        if (s_on_state) s_on_state(true);
         break;
     case WEBSOCKET_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_DISCONNECTED");
         s_connected = false;
+        if (s_on_state) s_on_state(false);
         break;
     case WEBSOCKET_EVENT_DATA:
         if (data->op_code == 0x01 && s_on_text) {
@@ -35,6 +38,7 @@ static void websocket_event_handler(void *arg, esp_event_base_t event_base,
     case WEBSOCKET_EVENT_ERROR:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_ERROR");
         s_connected = false;
+        if (s_on_state) s_on_state(false);
         break;
     default:
         break;
@@ -47,7 +51,7 @@ void websocket_init(const char *url, ws_on_text_cb_t on_text, ws_on_binary_cb_t 
 
     esp_websocket_client_config_t ws_cfg = {
         .uri = url,
-        .reconnect_timeout_ms = 2000,
+        .reconnect_timeout_ms = portMAX_DELAY,  /* 禁用自动重连，由应用层显式管理 */
         .network_timeout_ms = 5000,
         .ping_interval_sec = 10,
         .task_stack = 8192,
@@ -58,6 +62,10 @@ void websocket_init(const char *url, ws_on_text_cb_t on_text, ws_on_binary_cb_t 
     esp_websocket_register_events(s_client, WEBSOCKET_EVENT_ANY,
                                   websocket_event_handler, NULL);
     esp_websocket_client_start(s_client);
+}
+
+void websocket_set_state_callback(ws_on_state_cb_t on_state) {
+    s_on_state = on_state;
 }
 
 void websocket_deinit(void) {

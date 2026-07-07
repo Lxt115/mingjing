@@ -17,6 +17,7 @@ class DeviceResponse(CamelModel):
     auto_upgrade: bool
     bound_agent_id: UUID | None
     bound_agent_name: str | None
+    bind_code: str | None = None
     created_at: datetime
     updated_at: datetime
 

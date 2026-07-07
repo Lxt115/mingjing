@@ -45,8 +45,4 @@ const { isMobile } = useMediaQuery()
 .page-leave-active {
   animation: fadeIn 0.15s ease reverse;
 }
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
 </style>

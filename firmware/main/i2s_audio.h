@@ -1,5 +1,6 @@
 #pragma once
 #include "esp_err.h"
+#include "driver/i2c_master.h"
 #include <stdint.h>
 
 #define DEVICE_AUDIO_SAMPLE_RATE  16000
@@ -7,7 +8,7 @@
 #define DEVICE_AUDIO_CHUNK_MS     40
 #define DEVICE_AUDIO_CHUNK_BYTES  (DEVICE_AUDIO_SAMPLE_RATE * (DEVICE_AUDIO_BIT_WIDTH / 8) * DEVICE_AUDIO_CHUNK_MS / 1000)
 
-/* Xmini C3 pin definitions (from official xiaozhi-esp32 board config) */
+/* Xmini C3 pin definitions */
 #define I2S_BCK      8
 #define I2S_WS       6
 #define I2S_DIN      7
@@ -27,3 +28,6 @@ int  i2s_record_read(int16_t *buf, int samples);
 void i2s_playback_start(void);
 void i2s_playback_stop(void);
 int  i2s_playback_write(const uint8_t *data, int len);
+
+/** Get the I2C master bus handle (for sharing with display) */
+i2c_master_bus_handle_t i2s_audio_get_i2c_bus(void);

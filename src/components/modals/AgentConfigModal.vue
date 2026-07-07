@@ -14,6 +14,8 @@ const editId = computed(() => ui.modalData.agentId as string | undefined)
 const isCreate = computed(() => !editId.value)
 
 const agentName = ref('')
+const agentEmoji = ref('🤖')
+const emojiPickerOpen = ref(false)
 const systemPrompt = ref('')
 const templatesOpen = ref(false)
 const voiceId = ref<string | null>(null)
@@ -23,6 +25,73 @@ const speed = ref(55)
 const volume = ref(80)
 const pitch = ref(60)
 const saving = ref(false)
+
+const emojiList = [
+  '😊',
+  '😄',
+  '🥰',
+  '😎',
+  '🤗',
+  '😇',
+  '😂',
+  '🤓',
+  '😜',
+  '🤔',
+  '😏',
+  '😤',
+  '🥺',
+  '😴',
+  '🥳',
+  '😍',
+  '🐶',
+  '🐱',
+  '🦊',
+  '🐻',
+  '🐼',
+  '🐰',
+  '🐨',
+  '🐸',
+  '🦄',
+  '🦋',
+  '🐝',
+  '🐙',
+  '🦉',
+  '🐳',
+  '🐲',
+  '🐥',
+  '🎮',
+  '📚',
+  '🎨',
+  '🎵',
+  '🎬',
+  '🔮',
+  '💡',
+  '🚀',
+  '🌸',
+  '🍀',
+  '🌙',
+  '⭐',
+  '💎',
+  '🎭',
+  '🧸',
+  '🎪',
+  '🤖',
+  '👻',
+  '🧚',
+  '🧙',
+  '🦸',
+  '👸',
+  '🤴',
+  '🧑‍🚀',
+  '💂',
+  '🕵️',
+  '👩‍🔬',
+  '👨‍🍳',
+  '🧑‍🎤',
+  '👩‍🏫',
+  '👨‍💻',
+  '🦹',
+]
 
 const wordCount = computed(() => systemPrompt.value.length)
 const wordCountClass = computed(() =>
@@ -76,6 +145,7 @@ async function loadDevices() {
 function initForm() {
   if (isCreate.value) {
     agentName.value = ''
+    agentEmoji.value = '🤖'
     systemPrompt.value = ''
     voiceId.value = null
     knowledgeIds.value = []
@@ -87,6 +157,7 @@ function initForm() {
     const agent = agentsStore.agents.find((a) => a.id === editId.value)
     if (agent) {
       agentName.value = agent.name
+      agentEmoji.value = agent.emoji || '🤖'
       systemPrompt.value = agent.systemPrompt
       voiceId.value = agent.voiceId
       knowledgeIds.value = [...agent.knowledgeIds]
@@ -136,6 +207,7 @@ async function saveConfig() {
   try {
     const form: AgentForm = {
       name: agentName.value,
+      emoji: agentEmoji.value,
       description: '',
       systemPrompt: systemPrompt.value,
       voiceId: voiceId.value,
@@ -194,6 +266,41 @@ initForm()
     <div class="overflow-y-auto flex-1 pt-5">
       <!--  人设 -->
       <div v-show="activeModalTab === 'persona'">
+        <div class="flex flex-col items-center mb-5">
+          <div class="relative">
+            <button
+              class="w-[72px] h-[72px] rounded-2xl flex items-center justify-center text-[38px] bg-[var(--bg)] border-[1.5px] border-[var(--border)] cursor-pointer transition-all duration-200 hover:border-[var(--coral)] hover:shadow-[0_4px_16px_rgba(255,107,107,.18)] hover:-translate-y-0.5"
+              @click="emojiPickerOpen = !emojiPickerOpen"
+            >
+              {{ agentEmoji }}
+            </button>
+            <Transition name="picker-slide">
+              <div
+                v-if="emojiPickerOpen"
+                class="absolute top-full left-1/2 -translate-x-1/2 mt-2 p-3 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] shadow-[var(--shadow-lg)] grid grid-cols-8 gap-1 z-10 w-[316px]"
+              >
+                <button
+                  v-for="emoji in emojiList"
+                  :key="emoji"
+                  :class="[
+                    'w-9 h-9 flex items-center justify-center text-lg rounded-lg cursor-pointer border-[1.5px] transition-all duration-150 bg-transparent',
+                    agentEmoji === emoji
+                      ? 'border-[var(--coral)] bg-[rgba(255,107,107,.08)] scale-110'
+                      : 'border-transparent hover:bg-[var(--bg)] hover:border-[var(--border)]',
+                  ]"
+                  @click="
+                    agentEmoji = emoji
+                    emojiPickerOpen = false
+                  "
+                >
+                  {{ emoji }}
+                </button>
+              </div>
+            </Transition>
+          </div>
+          <div class="text-[11px] text-[var(--text3)] font-semibold mt-2">点击更换头像</div>
+        </div>
+
         <div class="mb-[18px]">
           <label
             class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
@@ -440,3 +547,15 @@ initForm()
     </div>
   </div>
 </template>
+
+<style scoped>
+.picker-slide-enter-active,
+.picker-slide-leave-active {
+  transition: all 0.2s ease;
+}
+.picker-slide-enter-from,
+.picker-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+</style>

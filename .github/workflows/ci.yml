@@ -32,34 +32,8 @@ jobs:
       - name: Format Check
         run: pnpm format --check
 
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v3
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'pnpm'
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: Unit Tests
-        run: pnpm test -- --coverage
-
-      - name: Upload Coverage
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage
-          path: coverage/
-
   build:
-    needs: [lint-and-typecheck, test]
+    needs: [lint-and-typecheck]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

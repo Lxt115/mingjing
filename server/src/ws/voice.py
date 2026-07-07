@@ -27,6 +27,18 @@ async def handle_voice(ws: WebSocket, agent_id: str):
 
     is_recording = False
     opus_chunks = []  # raw Opus bytes from device
+    pipeline_task: asyncio.Task | None = None  # 当前 pipeline 异步任务，用于打断
+
+    async def cancel_pipeline():
+        """取消正在运行的 pipeline 任务"""
+        nonlocal pipeline_task
+        if pipeline_task and not pipeline_task.done():
+            pipeline_task.cancel()
+            try:
+                await pipeline_task
+            except asyncio.CancelledError:
+                pass
+        pipeline_task = None
 
     try:
         while True:
@@ -53,15 +65,25 @@ async def handle_voice(ws: WebSocket, agent_id: str):
             msg_type = msg.get("type", "")
 
             if msg_type == "audio_start":
+                # 先取消旧的 pipeline（如果正在运行）
+                await cancel_pipeline()
                 is_recording = True
                 opus_chunks.clear()
                 await manager.send_json(ws, {"type": "status", "message": "recording"})
+
+            elif msg_type == "abort":
+                # 打断：取消正在运行的 pipeline
+                await cancel_pipeline()
+                await manager.send_json(ws, {"type": "abort"})
 
             elif msg_type == "audio_end":
                 is_recording = False
                 if not opus_chunks:
                     await manager.send_json(ws, {"type": "status", "message": "no audio"})
                     continue
+
+                # 先取消可能还在运行的旧 pipeline
+                await cancel_pipeline()
 
                 # Decode each Opus frame → PCM (each chunk is one 60ms frame)
                 decoder = Decoder(OPUS_SAMPLE_RATE, OPUS_CHANNELS)
@@ -85,18 +107,17 @@ async def handle_voice(ws: WebSocket, agent_id: str):
 
                 await manager.send_json(ws, {"type": "status", "message": "recognizing"})
 
-                # xiaozhi pattern: APPLICATION_AUDIO, bitrate=24000, complexity=10, SIGNAL_VOICE
-                encoder = Encoder(OPUS_SAMPLE_RATE, OPUS_CHANNELS, constants.APPLICATION_AUDIO)
-                encoder.bitrate = 24000
-                encoder.complexity = 10
-                encoder.signal = constants.SIGNAL_VOICE
+                # ── 运行 pipeline 作为可取消的异步任务 ──
+                async def run_pipeline():
+                    encoder = Encoder(OPUS_SAMPLE_RATE, OPUS_CHANNELS, constants.APPLICATION_AUDIO)
+                    encoder.bitrate = 24000
+                    encoder.complexity = 10
+                    encoder.signal = constants.SIGNAL_VOICE
 
-                # 缓冲区：存放跨 chunk 未对齐的 PCM 剩余数据，避免尾部截断
-                frame_size = OPUS_FRAME_SAMPLES * 2  # 1920 bytes per 60ms frame
-                pcm_buffer = bytearray()
+                    frame_size = OPUS_FRAME_SAMPLES * 2  # 1920 bytes per 60ms frame
+                    pcm_buffer = bytearray()
 
-                async with async_session_factory() as db:
-                    try:
+                    async with async_session_factory() as db:
                         async for event in pipeline.speech_pipeline_stream(
                             db, audio_bytes, "pcm", agent_uuid, conn.conversation_id,
                         ):
@@ -119,15 +140,13 @@ async def handle_voice(ws: WebSocket, agent_id: str):
                                     "type": "error",
                                     "message": event["message"],
                                 })
-                                break
+                                return
 
                             elif event_type == "audio_chunk":
-                                # event["content"] is base64-encoded PCM from TTS
                                 import base64 as b64
-                                pcm_bytes = b64.b64decode(event["content"])
+                                pcm_data = b64.b64decode(event["content"])
 
-                                # 追加到缓冲区，积累成完整帧再编码
-                                pcm_buffer.extend(pcm_bytes)
+                                pcm_buffer.extend(pcm_data)
                                 while len(pcm_buffer) >= frame_size:
                                     pcm_frame = bytes(pcm_buffer[:frame_size])
                                     del pcm_buffer[:frame_size]
@@ -135,13 +154,11 @@ async def handle_voice(ws: WebSocket, agent_id: str):
                                         opus_frame = encoder.encode(pcm_frame, OPUS_FRAME_SAMPLES)
                                         if opus_frame:
                                             await ws.send_bytes(opus_frame)
-                                            # 速率控制：每帧60ms，匹配ESP32 I2S播放时钟
                                             await asyncio.sleep(0.06)
                                     except Exception:
                                         pass
 
                             elif event_type == "audio_done":
-                                # 刷新缓冲区尾部：用静音补齐最后一个不完整帧
                                 if len(pcm_buffer) > 0:
                                     padded = bytes(pcm_buffer) + b'\x00' * (frame_size - len(pcm_buffer))
                                     try:
@@ -162,8 +179,16 @@ async def handle_voice(ws: WebSocket, agent_id: str):
                             elif event_type == "done":
                                 pass
 
-                    except Exception as e:
-                        await manager.send_json(ws, {"type": "error", "message": str(e)})
+                # 启动 pipeline 任务
+                pipeline_task = asyncio.create_task(run_pipeline())
+                try:
+                    await pipeline_task
+                except asyncio.CancelledError:
+                    print("[voice] pipeline cancelled by abort")
+                except Exception as e:
+                    await manager.send_json(ws, {"type": "error", "message": str(e)})
+                finally:
+                    pipeline_task = None
 
     except WebSocketDisconnect:
         pass

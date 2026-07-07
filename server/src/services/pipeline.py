@@ -1,4 +1,5 @@
 import uuid
+import re
 import base64
 
 from sqlalchemy import select
@@ -195,17 +196,59 @@ async def speech_pipeline_stream(
 
     system_prompt, messages = await _build_llm_messages(db, agent, text, conversation_id)
 
+    # ── 注入联网搜索提示词 ──
+    from src.services.web_search import inject_search_prompt, extract_search_query, search
+    SEARCH_TAG_RE = re.compile(r"<SEARCH>.*?</SEARCH>", re.DOTALL)
+    system_prompt = inject_search_prompt(system_prompt)
+
     llm = get_llm()
+
+    MAX_SEARCH_DEPTH = 3
     full_text = ""
-    async for token in llm.chat_stream(
-        messages=messages,
-        system_prompt=system_prompt,
-    ):
-        if token.startswith("["):
-            yield {"type": "error", "message": token}
-            return
-        full_text += token
-        yield {"type": "text_chunk", "content": token}
+    search_depth = 0
+
+    while True:
+        # 调用 LLM
+        round_text = ""
+        async for token in llm.chat_stream(
+            messages=messages,
+            system_prompt=system_prompt,
+        ):
+            if token.startswith("["):
+                yield {"type": "error", "message": token}
+                return
+            round_text += token
+
+        # 检测是否需要联网搜索
+        search_query = extract_search_query(round_text)
+
+        if search_query and search_depth < MAX_SEARCH_DEPTH:
+            # 有搜索请求，执行搜索
+            search_depth += 1
+            print(f"[DEBUG] 联网搜索 #{search_depth}: {search_query}")
+            search_result = search(search_query)
+
+            # 移除 SEARCH 标签（不暴露给用户）
+            clean_text = SEARCH_TAG_RE.sub("", round_text).strip()
+            if clean_text:
+                full_text += clean_text
+
+            # 将搜索结果注入对话
+            messages.append({
+                "role": "user",
+                "content": f"【联网搜索结果】\n{search_result}\n\n请基于以上搜索结果回答用户的问题。如果搜索结果不足以回答，可以再次搜索。",
+            })
+
+            # 继续循环，让 LLM 基于搜索结果重新生成
+            continue
+
+        # 无需搜索或已达最大深度，结束循环
+        full_text += SEARCH_TAG_RE.sub("", round_text) if search_depth > 0 else round_text
+        break
+
+    # 发送文本流（仅发送最终回答部分）
+    final_answer = full_text
+    yield {"type": "text_chunk", "content": final_answer}
 
     voice_name = _pick_voice_name(agent)
     tts = get_tts()
@@ -214,7 +257,7 @@ async def speech_pipeline_stream(
     total_tts_chunks = 0
     try:
         async for chunk in tts.synthesize_streaming(
-            text=full_text,
+            text=final_answer,
             voice_name=voice_name,
             speed=agent.speed,
             volume=agent.volume,
@@ -223,11 +266,11 @@ async def speech_pipeline_stream(
             total_tts_bytes += len(chunk)
             total_tts_chunks += 1
             yield {"type": "audio_chunk", "content": base64.b64encode(chunk).decode()}
-        print(f"[DEBUG] TTS stream: {total_tts_chunks} chunks, {total_tts_bytes} bytes, ~{total_tts_bytes//44}ms")
+        print(f"[DEBUG] TTS stream: {total_tts_chunks} chunks, {total_tts_bytes} bytes, ~{total_tts_bytes//32}ms")
     except Exception as e:
         audio_error = str(e)
 
-    conv_id = await _persist_conversation(db, conversation_id, agent, text, full_text)
+    conv_id = await _persist_conversation(db, conversation_id, agent, text, final_answer)
 
     yield {
         "type": "audio_done",
@@ -251,24 +294,53 @@ async def chat_pipeline_stream(
 
     system_prompt, messages = await _build_llm_messages(db, agent, text, conversation_id)
 
+    # ── 注入联网搜索提示词 ──
+    from src.services.web_search import inject_search_prompt, extract_search_query, search
+    SEARCH_TAG_RE = re.compile(r"<SEARCH>.*?</SEARCH>", re.DOTALL)
+    system_prompt = inject_search_prompt(system_prompt)
+
     llm = get_llm()
+
+    MAX_SEARCH_DEPTH = 3
     full_text = ""
-    async for token in llm.chat_stream(
-        messages=messages,
-        system_prompt=system_prompt,
-    ):
-        if token.startswith("["):
-            yield {"type": "error", "message": token}
-            return
-        full_text += token
-        yield {"type": "text_chunk", "content": token}
+    search_depth = 0
+
+    while True:
+        round_text = ""
+        async for token in llm.chat_stream(
+            messages=messages,
+            system_prompt=system_prompt,
+        ):
+            if token.startswith("["):
+                yield {"type": "error", "message": token}
+                return
+            round_text += token
+
+        search_query = extract_search_query(round_text)
+        if search_query and search_depth < MAX_SEARCH_DEPTH:
+            search_depth += 1
+            search_result = search(search_query)
+            clean_text = SEARCH_TAG_RE.sub("", round_text).strip()
+            if clean_text:
+                full_text += clean_text
+            messages.append({
+                "role": "user",
+                "content": f"【联网搜索结果】\n{search_result}\n\n请基于以上搜索结果回答用户的问题。如果搜索结果不足以回答，可以再次搜索。",
+            })
+            continue
+
+        full_text += SEARCH_TAG_RE.sub("", round_text) if search_depth > 0 else round_text
+        break
+
+    final_answer = full_text
+    yield {"type": "text_chunk", "content": final_answer}
 
     voice_name = _pick_voice_name(agent)
     tts = get_tts()
     audio_error = ""
     try:
         async for chunk in tts.synthesize_streaming(
-            text=full_text,
+            text=final_answer,
             voice_name=voice_name,
             speed=agent.speed,
             volume=agent.volume,
@@ -278,7 +350,7 @@ async def chat_pipeline_stream(
     except Exception as e:
         audio_error = str(e)
 
-    conv_id = await _persist_conversation(db, conversation_id, agent, text, full_text)
+    conv_id = await _persist_conversation(db, conversation_id, agent, text, final_answer)
 
     yield {
         "type": "audio_done",

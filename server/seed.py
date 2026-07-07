@@ -7,7 +7,6 @@ from src.database import async_session_factory
 from src.models.agent import Agent
 from src.models.device import Device
 from src.models.voice import Voice
-from src.models.knowledge import KnowledgeBase
 from src.models.conversation import Conversation, Message
 from src.models.voiceprint import VoiceprintSpeaker
 
@@ -19,8 +18,6 @@ SEED_VOICES = [
     {"id": uuid.UUID("a1000000-0000-0000-0000-000000000004"), "name": "沉稳 · 知识感", "character": "稳", "description": "中文 · 适合科普问答", "language": "中文", "gender": "male", "category": "male", "gradient": "linear-gradient(135deg, #4facfe, #00f2fe)"},
     {"id": uuid.UUID("a1000000-0000-0000-0000-000000000005"), "name": "Lily · 美式英语", "character": "En", "description": "English · 亲切自然", "language": "英语", "gender": "female", "category": "english", "gradient": "linear-gradient(135deg, #667eea, #764ba2)"},
 ]
-
-SEED_KNOWLEDGE: list = []
 
 SEED_AGENTS = [
     {
@@ -118,12 +115,6 @@ async def seed():
             db.add(voice)
             voices.append(voice)
 
-        kbs = []
-        for k in SEED_KNOWLEDGE:
-            kb = KnowledgeBase(**k)
-            db.add(kb)
-            kbs.append(kb)
-
         agents = []
         for i, a in enumerate(SEED_AGENTS):
             agent = Agent(
@@ -178,7 +169,7 @@ async def seed():
                 db.add(msg)
 
         await db.commit()
-        print(f"种子数据写入完成: {len(SEED_VOICES)} voices, {len(SEED_KNOWLEDGE)} kbs, {len(SEED_AGENTS)} agents, {len(SEED_DEVICES)} devices, {len(SEED_SPEAKERS)} speakers, {len(SEED_CONVERSATIONS)} conversations")
+        print(f"种子数据写入完成: {len(SEED_VOICES)} voices, {len(SEED_AGENTS)} agents, {len(SEED_DEVICES)} devices, {len(SEED_SPEAKERS)} speakers, {len(SEED_CONVERSATIONS)} conversations")
 
 
 if __name__ == "__main__":

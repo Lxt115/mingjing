@@ -12,6 +12,7 @@ typedef enum {
     PROTO_MSG_AUDIO_CHUNK,
     PROTO_MSG_AUDIO_DONE,
     PROTO_MSG_ERROR,
+    PROTO_MSG_ABORT,
     PROTO_MSG_UNKNOWN,
 } proto_msg_type_t;
 
@@ -26,4 +27,5 @@ typedef struct {
 int  proto_build_audio_start(char *buf, int max_len);
 int  proto_build_audio_chunk(char *buf, int max_len, const uint8_t *audio_b64, int b64_len);
 int  proto_build_audio_end(char *buf, int max_len);
+int  proto_build_abort(char *buf, int max_len);
 bool proto_parse(const char *json_str, int len, proto_msg_t *out);

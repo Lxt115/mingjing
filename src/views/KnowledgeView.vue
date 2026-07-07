@@ -17,7 +17,9 @@ async function loadList() {
   try {
     const res = await apiService.knowledge.getList()
     kbList.value = res.data
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 async function toggleMemory() {
@@ -112,18 +114,30 @@ watch(() => ui.kbRefreshCounter, loadList)
 </script>
 
 <template>
-  <div v-if="!isMobile" class="animate-[fadeIn_.25s_ease] grid grid-cols-[340px_1fr] gap-5" style="height: calc(100vh - 60px - 48px)">
+  <div
+    v-if="!isMobile"
+    class="animate-[fadeIn_.25s_ease] grid grid-cols-[340px_1fr] gap-5"
+    style="height: calc(100vh - 60px - 48px)"
+  >
     <!-- Left panel: KB list -->
     <div class="flex flex-col gap-4">
-      <div class="bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border)] shadow-[var(--shadow-sm)] py-5 px-6">
+      <div
+        class="bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border)] shadow-[var(--shadow-sm)] py-5 px-6"
+      >
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-2.5">
-            <div class="w-9 h-9 rounded-[10px] bg-[#fff8e6] flex items-center justify-center text-lg shrink-0">🧠</div>
+            <div
+              class="w-9 h-9 rounded-[10px] bg-[#fff8e6] flex items-center justify-center text-lg shrink-0"
+            >
+              🧠
+            </div>
             <div class="text-[15px] font-extrabold text-[var(--text1)]">自动记忆</div>
           </div>
           <Switch :model-value="memoryEnabled" @update:model-value="toggleMemory" />
         </div>
-        <div class="bg-[var(--bg)] rounded-[12px] p-4 text-[12px] text-[var(--text2)] leading-relaxed font-semibold">
+        <div
+          class="bg-[var(--bg)] rounded-[12px] p-4 text-[12px] text-[var(--text2)] leading-relaxed font-semibold"
+        >
           <div class="mb-1.5">📝 自动学习内容</div>
           <div class="text-[var(--text3)] leading-[1.65] text-[11px]">
             AI 自动记录关键信息如喜好、习惯等，形成个性化知识
@@ -133,9 +147,13 @@ watch(() => ui.kbRefreshCounter, loadList)
     </div>
 
     <!-- Right panel -->
-    <div class="bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden flex flex-col">
+    <div
+      class="bg-[var(--surface)] rounded-[var(--radius-lg)] border border-[var(--border)] shadow-[var(--shadow-sm)] overflow-hidden flex flex-col"
+    >
       <!-- Toolbar -->
-      <div class="px-5 pt-4 pb-3 border-b border-[var(--border)] shrink-0 flex justify-between items-center">
+      <div
+        class="px-5 pt-4 pb-3 border-b border-[var(--border)] shrink-0 flex justify-between items-center"
+      >
         <div class="text-[15px] font-extrabold text-[var(--text1)]">
           {{ selectedKb ? selectedKb.name : '知识库列表' }}
         </div>
@@ -168,9 +186,13 @@ watch(() => ui.kbRefreshCounter, loadList)
           <div>
             <div class="text-sm font-extrabold text-[var(--text1)]">
               {{ kb.name }}
-              <span v-if="!kb.isEnabled" class="text-[10px] text-[var(--text3)] ml-1">(已禁用)</span>
+              <span v-if="!kb.isEnabled" class="text-[10px] text-[var(--text3)] ml-1"
+                >(已禁用)</span
+              >
             </div>
-            <div class="text-[11px] text-[var(--text3)]">{{ kb.itemCount }} {{ kb.itemUnit }} · {{ kb.description }}</div>
+            <div class="text-[11px] text-[var(--text3)]">
+              {{ kb.itemCount }} {{ kb.itemUnit }} · {{ kb.description }}
+            </div>
           </div>
           <div class="flex items-center gap-2">
             <span :class="['text-xs font-bold px-2 py-0.5 rounded-full', categoryClass(kb)]">
@@ -198,10 +220,14 @@ watch(() => ui.kbRefreshCounter, loadList)
         <template v-else>
           <!-- Info bar -->
           <div class="flex items-center gap-3 flex-wrap">
-            <span :class="['text-xs font-bold px-2.5 py-1 rounded-full', categoryClass(selectedKb)]">
+            <span
+              :class="['text-xs font-bold px-2.5 py-1 rounded-full', categoryClass(selectedKb)]"
+            >
               {{ categoryLabel(selectedKb) }}
             </span>
-            <span class="text-xs text-[var(--text3)]">📄 {{ selectedKb.itemCount }} {{ selectedKb.itemUnit }}</span>
+            <span class="text-xs text-[var(--text3)]"
+              >📄 {{ selectedKb.itemCount }} {{ selectedKb.itemUnit }}</span
+            >
             <span class="text-xs text-[var(--text3)]">{{ selectedKb.description }}</span>
             <div class="flex-1"></div>
             <button
@@ -221,9 +247,16 @@ watch(() => ui.kbRefreshCounter, loadList)
           </div>
 
           <!-- Content list -->
-          <div class="text-[10px] font-extrabold text-[var(--text3)] tracking-[.6px] uppercase mt-2">知识库内容</div>
+          <div
+            class="text-[10px] font-extrabold text-[var(--text3)] tracking-[.6px] uppercase mt-2"
+          >
+            知识库内容
+          </div>
 
-          <div v-if="!selectedKb.content || selectedKb.content.length === 0" class="text-center text-[var(--text3)] text-sm py-6 bg-[var(--bg)] rounded-[var(--radius-md)]">
+          <div
+            v-if="!selectedKb.content || selectedKb.content.length === 0"
+            class="text-center text-[var(--text3)] text-sm py-6 bg-[var(--bg)] rounded-[var(--radius-md)]"
+          >
             暂无内容，请通过「＋ 上传」添加文件
           </div>
 
@@ -232,8 +265,12 @@ watch(() => ui.kbRefreshCounter, loadList)
             :key="idx"
             class="bg-[var(--bg)] rounded-[var(--radius-md)] border border-[var(--border)] overflow-hidden"
           >
-            <div class="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] bg-[#fafafa]">
-              <span class="text-xs font-extrabold text-[var(--text2)]">第 {{ idx + 1 }} 条 · {{ item.length }} 字</span>
+            <div
+              class="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] bg-[#fafafa]"
+            >
+              <span class="text-xs font-extrabold text-[var(--text2)]"
+                >第 {{ idx + 1 }} 条 · {{ item.length }} 字</span
+              >
               <button
                 class="text-[var(--text3)] hover:text-[var(--coral)] bg-none border-none cursor-pointer text-xs px-1"
                 title="删除此条"
@@ -242,7 +279,9 @@ watch(() => ui.kbRefreshCounter, loadList)
                 ✕ 删除
               </button>
             </div>
-            <div class="p-4 text-[13px] text-[var(--text1)] leading-relaxed whitespace-pre-wrap max-h-[300px] overflow-y-auto font-semibold">
+            <div
+              class="p-4 text-[13px] text-[var(--text1)] leading-relaxed whitespace-pre-wrap max-h-[300px] overflow-y-auto font-semibold"
+            >
               {{ item.slice(0, 2000) }}{{ item.length > 2000 ? '…' : '' }}
             </div>
           </div>
@@ -263,9 +302,16 @@ watch(() => ui.kbRefreshCounter, loadList)
 
   <!-- Mobile layout -->
   <div v-else class="flex flex-col h-full">
-    <div class="flex items-center justify-between py-3.5 px-4 bg-[var(--surface)] rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] mb-3 mx-2" @click="toggleMemory">
+    <div
+      class="flex items-center justify-between py-3.5 px-4 bg-[var(--surface)] rounded-[var(--radius-md)] shadow-[var(--shadow-sm)] mb-3 mx-2"
+      @click="toggleMemory"
+    >
       <div class="flex items-center gap-2.5">
-        <div class="w-10 h-10 rounded-[12px] bg-[#fff8e6] flex items-center justify-center text-lg shrink-0">🧠</div>
+        <div
+          class="w-10 h-10 rounded-[12px] bg-[#fff8e6] flex items-center justify-center text-lg shrink-0"
+        >
+          🧠
+        </div>
         <div>
           <div class="text-sm font-extrabold text-[var(--text1)]">自动记忆</div>
           <div class="text-xs text-[var(--text3)]">AI 自动学习对话，记录关键信息</div>
@@ -277,7 +323,9 @@ watch(() => ui.kbRefreshCounter, loadList)
     <div class="flex items-center justify-between px-2 pt-3 pb-3">
       <div>
         <div class="text-[13px] font-extrabold text-[var(--text1)]">我的知识库</div>
-        <div class="text-[11px] text-[var(--text3)] mt-px font-bold">{{ kbList.length }} 个知识库</div>
+        <div class="text-[11px] text-[var(--text3)] mt-px font-bold">
+          {{ kbList.length }} 个知识库
+        </div>
       </div>
       <button
         class="py-2 px-3 rounded-[20px] bg-[rgba(255,107,107,.1)] text-[var(--coral)] text-[11px] font-extrabold border-none cursor-pointer transition-all duration-200 active:scale-[.95]"
@@ -297,7 +345,9 @@ watch(() => ui.kbRefreshCounter, loadList)
       >
         <div class="flex items-center justify-between mb-2">
           <div class="text-base font-black text-[var(--text1)]">{{ kb.name }}</div>
-          <span :class="['text-[10px] font-extrabold px-2 py-0.5 rounded-[20px]', categoryClass(kb)]">
+          <span
+            :class="['text-[10px] font-extrabold px-2 py-0.5 rounded-[20px]', categoryClass(kb)]"
+          >
             {{ categoryLabel(kb) }}
           </span>
         </div>
@@ -310,9 +360,4 @@ watch(() => ui.kbRefreshCounter, loadList)
   </div>
 </template>
 
-<style scoped>
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-</style>
+<style scoped></style>
