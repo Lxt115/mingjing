@@ -170,6 +170,11 @@ function initForm() {
   templatesOpen.value = false
 }
 
+function selectEmoji(emoji: string) {
+  agentEmoji.value = emoji
+  emojiPickerOpen.value = false
+}
+
 function applyTemplate(key: string) {
   const tpl = agentsStore.promptTemplates.find((t) => t.key === key)
   if (tpl) {
@@ -288,10 +293,7 @@ initForm()
                       ? 'border-[var(--coral)] bg-[rgba(255,107,107,.08)] scale-110'
                       : 'border-transparent hover:bg-[var(--bg)] hover:border-[var(--border)]',
                   ]"
-                  @click="
-                    agentEmoji = emoji
-                    emojiPickerOpen = false
-                  "
+                  @click="selectEmoji(emoji)"
                 >
                   {{ emoji }}
                 </button>
