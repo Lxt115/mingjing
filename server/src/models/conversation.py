@@ -14,7 +14,7 @@ class Conversation(Base, TimestampMixin):
     accent_color: Mapped[str] = mapped_column(String(50), default="var(--coral)")
     accent_bg: Mapped[str] = mapped_column(String(50), default="#fff0f0")
     date_label: Mapped[str] = mapped_column(String(50), default="")
-    time: Mapped[str] = mapped_column(String(10), default="")
+    time: Mapped[str] = mapped_column("chat_time", String(10), default="")
     message_count: Mapped[int] = mapped_column(Integer, default=0)
     agent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("agents.id", ondelete="SET NULL"), nullable=True)
 
@@ -24,9 +24,9 @@ class Conversation(Base, TimestampMixin):
 class Message(Base, TimestampMixin):
     __tablename__ = "messages"
 
-    role: Mapped[str] = mapped_column(String(10), nullable=False)
+    role: Mapped[str] = mapped_column("msg_role", String(10), nullable=False)
     text: Mapped[str] = mapped_column(String(5000), nullable=False, default="")
-    timestamp: Mapped[str] = mapped_column(String(30), default="")
+    timestamp: Mapped[str] = mapped_column("sent_at", String(36), default="")
     conversation_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("conversations.id", ondelete="CASCADE"))
 
     conversation = relationship("Conversation", back_populates="messages")

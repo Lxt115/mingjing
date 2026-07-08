@@ -30,9 +30,6 @@ export interface Agent {
   systemPrompt: string
   voiceId: string | null
   knowledgeIds: string[]
-  speed: number
-  volume: number
-  pitch: number
   createdAt: string
   updatedAt: string
 }
@@ -46,9 +43,6 @@ export interface AgentForm {
   voiceId: string | null
   knowledgeIds: string[]
   deviceIds: string[]
-  speed: number
-  volume: number
-  pitch: number
   tags: AgentTag[]
 }
 
@@ -81,6 +75,7 @@ export interface Voice {
   emoji: string
   style: GradientStyle
   category: 'female' | 'male' | 'english' | 'japanese' | 'korean' | 'cloned'
+  providerVoiceName: string
 }
 
 export interface KnowledgeBase {

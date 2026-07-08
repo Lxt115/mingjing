@@ -14,3 +14,4 @@ class VoiceResponse(CamelModel):
     is_selected: bool
     gradient: str
     category: str
+    provider_voice_name: str = ""

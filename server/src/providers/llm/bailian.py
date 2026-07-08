@@ -64,7 +64,7 @@ class BailianLLMProvider(LLMProvider):
 
         loop = asyncio.get_running_loop()
         queue: asyncio.Queue = asyncio.Queue()
-        # 对应 xiaozhi 的 client_abort 标志：用于通知后台线程停止迭代
+        # stop_event：用于通知后台线程停止迭代
         stop_event = threading.Event()
 
         def _call():
@@ -78,7 +78,6 @@ class BailianLLMProvider(LLMProvider):
                     enable_thinking=False,
                 )
                 for resp in responses:
-                    # 对应 xiaozhi connection.py chat() 中的 if self.client_abort: break
                     if stop_event.is_set():
                         break
                     if resp.status_code == 200 and resp.output:
@@ -110,6 +109,4 @@ class BailianLLMProvider(LLMProvider):
                 elif msg_type == "done":
                     return
         finally:
-            # 对应 xiaozhi 的 clear_queues + client_abort：
-            # 当异步生成器被废弃时（Task 被 cancel），通知后台线程停止迭代 LLM 流
             stop_event.set()

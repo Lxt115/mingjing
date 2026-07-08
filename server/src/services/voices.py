@@ -36,4 +36,5 @@ def _to_response(v: Voice) -> VoiceResponse:
         is_selected=v.is_selected,
         gradient=v.gradient,
         category=v.category,
+        provider_voice_name=v.provider_voice_name or "",
     )

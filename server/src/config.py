@@ -9,7 +9,7 @@ if sys.platform == "win32":
 
 
 class Settings(BaseSettings):
-    # ── 数据库（默认 MySQL，与 xiaozhi 一致）──
+    # ── 数据库（默认 MySQL）──
     db_type: str = "mysql"           # mysql | sqlite
     db_host: str = "127.0.0.1"
     db_port: int = 3306

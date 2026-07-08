@@ -46,7 +46,7 @@ static TaskHandle_t s_record_task = NULL;
 static bool s_recording = false;
 static volatile bool s_aborted = false;  // 打断标志：阻止 playback_task 在打断后重新播放
 
-// 响应期望标志：对齐 xiaozhi 的 session_id 机制
+// 响应期望标志：session_id 机制
 // 只有当前录音结束后期望一个响应时才接受 transcript
 // 新录音开始或打断时清除，确保旧录音的延迟响应被忽略
 static bool s_has_pending_response = false;
@@ -56,7 +56,7 @@ static char g_disp_status[32] = "Ready";    // 当前状态文本
 static char g_disp_asr[128] = {0};          // 语音识别结果
 static char g_disp_tts[384] = {0};          // 语音合成文本（累积）
 
-// ── 设备状态机（对齐 xiaozhi DeviceState 枚举值）──
+// ── 设备状态机（DeviceState 枚举值）──
 typedef enum {
     kDeviceStateIdle = 3,        // 空闲
     kDeviceStateConnecting = 4,  // 连接中（发送 audio_start 后等待服务端就绪）
@@ -142,12 +142,12 @@ static void on_ws_state_changed(bool connected) {
     // 连接成功由 HandleStartListeningEvent 中的等待循环处理，不通过事件
 }
 
-/* ── 断连清理：销毁连接 + 停止所有活动 + 复位状态（对齐 xiaozhi CloseAudioChannel）── */
+/* ── 断连清理：销毁连接 + 停止所有活动 + 复位状态 ── */
 
 static void HandleWsDisconnected(void) {
     ESP_LOGW(TAG, "WebSocket disconnected, closing audio channel...");
 
-    // 1. 销毁 WebSocket（对齐 xiaozhi 的 CloseAudioChannel → websocket_.reset()）
+    // 1. 销毁 WebSocket
     websocket_deinit();
     device_ws_deinit();
 
@@ -161,7 +161,7 @@ static void HandleWsDisconnected(void) {
     xQueueReset(s_playback_queue);
     i2s_playback_stop();
 
-    // 4. 状态复位到 Idle（对齐 xiaozhi 的 on_audio_channel_closed_ → SetDeviceState(Idle)）
+    // 4. 状态复位到 Idle
     SetDeviceState(kDeviceStateIdle);
 
     // 5. 提示用户
@@ -185,7 +185,7 @@ static void AbortSpeaking(void) {
     // 4. 立即停止扬声器硬件
     i2s_playback_stop();
     // 5. 清除响应期望标志：打断后的旧响应不应再被接受
-    //    对齐 xiaozhi 的 session_id 机制 —— 新会话开始，旧会话作废
+    //    新会话开始，旧会话作废
     s_has_pending_response = false;
     // 6. 清除显示文本
     g_disp_tts[0] = '\0';
@@ -206,7 +206,7 @@ static void HandleStartListeningEvent(void) {
         return;
     }
 
-    // ★ 和 xiaozhi 一样：如果 WebSocket 未连接，先建连再开始录音
+    // 如果 WebSocket 未连接，先建连再开始录音
     if (!websocket_is_connected()) {
         ESP_LOGI(TAG, "WebSocket not connected, reconnecting...");
         display_show("Connecting...", NULL);
@@ -215,7 +215,7 @@ static void HandleStartListeningEvent(void) {
         websocket_init(g_ws_url, on_websocket_text, on_websocket_binary);
         websocket_set_state_callback(on_ws_state_changed);
 
-        // 阻塞等待连接（对齐 xiaozhi OpenAudioChannel 的 xEventGroupWaitBits 10s 超时）
+        // 阻塞等待连接（10s 超时）
         int retry = 0;
         while (!websocket_is_connected() && retry < 100) {  // 最多等约 10 秒
             vTaskDelay(pdMS_TO_TICKS(100));
@@ -233,7 +233,7 @@ static void HandleStartListeningEvent(void) {
         led_blink(1);
     }
 
-    // Idle 或被中断后 → 开始录音流程（对齐 xiaozhi：同步启动，不等 task 回调）
+    // Idle 或被中断后 → 开始录音流程（同步启动，不等 task 回调）
     if (!s_recording) {
         s_recording = true;
         s_has_pending_response = false;
@@ -242,7 +242,7 @@ static void HandleStartListeningEvent(void) {
         s_aborted = false;
 
         /* 同步发送 audio_start + 启动 I2S 录音，然后直接切到 Listening
-         * 对齐 xiaozhi 的 startToChat：abort → open channel → SetDeviceState(Listening) 一气呵成 */
+         * abort → open channel → SetDeviceState(Listening) 一气呵成 */
         char json_buf[256];
         proto_build_audio_start(json_buf, sizeof(json_buf));
         websocket_send_text(json_buf, strlen(json_buf));
@@ -406,7 +406,7 @@ static void on_websocket_text(const char *text, int len) {
         ESP_LOGI(TAG, "server welcome");
         break;
     case PROTO_MSG_TRANSCRIPT:
-        // 对齐 xiaozhi：transcript 不应该无条件切换到 Speaking
+        // transcript 不应该无条件切换到 Speaking
         // 只有当前在 Idle 且期待响应（当前录音刚结束）时才接受
         // 打断后旧录音的延迟 transcript 会被忽略，不切换状态
         if (s_device_state == kDeviceStateIdle && s_has_pending_response) {

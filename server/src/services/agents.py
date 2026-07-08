@@ -32,9 +32,6 @@ async def create_agent(db: AsyncSession, data: AgentCreate) -> AgentResponse:
         description=data.description,
         system_prompt=data.system_prompt,
         voice_id=data.voice_id,
-        speed=data.speed,
-        volume=data.volume,
-        pitch=data.pitch,
         tags=[t.model_dump() for t in data.tags],
     )
     if data.knowledge_ids:
@@ -116,9 +113,6 @@ def _agent_to_response(agent: Agent) -> AgentResponse:
         voice_id=agent.voice_id,
         knowledge_ids=[kb.id for kb in (agent.knowledges or [])],
         bound_device_ids=[d.id for d in (agent.devices or [])],
-        speed=agent.speed,
-        volume=agent.volume,
-        pitch=agent.pitch,
         created_at=agent.created_at,
         updated_at=agent.updated_at,
     )

@@ -4,7 +4,7 @@ import type { AgentForm, Agent, KnowledgeBase, Voice, Device } from '@/types'
 import { useModal } from '@/composables'
 import { useAgentsStore, useUiStore } from '@/store'
 import { apiService } from '@/services'
-import { InfoTip, Switch } from '@/components/ui'
+import { Switch } from '@/components/ui'
 
 const { close } = useModal()
 const agentsStore = useAgentsStore()
@@ -21,9 +21,6 @@ const templatesOpen = ref(false)
 const voiceId = ref<string | null>(null)
 const knowledgeIds = ref<string[]>([])
 const deviceIds = ref<string[]>([])
-const speed = ref(55)
-const volume = ref(80)
-const pitch = ref(60)
 const saving = ref(false)
 
 const emojiList = [
@@ -102,7 +99,7 @@ const wordCountClass = computed(() =>
       : 'text-[var(--text3)] bg-[var(--bg2)]',
 )
 
-const activeModalTab = ref<'persona' | 'voice' | 'kb' | 'device'>('persona')
+const activeModalTab = ref<'persona' | 'kb' | 'device'>('persona')
 
 const availableKbs = ref<KnowledgeBase[]>([])
 const kbsLoading = ref(false)
@@ -150,9 +147,6 @@ function initForm() {
     voiceId.value = null
     knowledgeIds.value = []
     deviceIds.value = []
-    speed.value = 55
-    volume.value = 80
-    pitch.value = 60
   } else {
     const agent = agentsStore.agents.find((a) => a.id === editId.value)
     if (agent) {
@@ -162,9 +156,6 @@ function initForm() {
       voiceId.value = agent.voiceId
       knowledgeIds.value = [...agent.knowledgeIds]
       deviceIds.value = [...agent.boundDeviceIds]
-      speed.value = Math.round(agent.speed * 100)
-      volume.value = Math.round(agent.volume * 100)
-      pitch.value = Math.round(agent.pitch * 100)
     }
   }
   templatesOpen.value = false
@@ -218,9 +209,6 @@ async function saveConfig() {
       voiceId: voiceId.value,
       knowledgeIds: knowledgeIds.value,
       deviceIds: deviceIds.value,
-      speed: speed.value / 100,
-      volume: volume.value / 100,
-      pitch: pitch.value / 100,
       tags: [],
     }
     if (isCreate.value) {
@@ -251,7 +239,6 @@ initForm()
       <button
         v-for="tab in [
           { id: 'persona' as const, label: '🎭 人设' },
-          { id: 'voice' as const, label: '🔊 声音' },
           { id: 'kb' as const, label: '📚 知识库' },
           { id: 'device' as const, label: '📱 设备' },
         ]"
@@ -364,10 +351,7 @@ initForm()
             </span>
           </div>
         </div>
-      </div>
 
-      <!--  声音 -->
-      <div v-show="activeModalTab === 'voice'">
         <div class="mb-[18px]">
           <label
             class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
@@ -375,66 +359,14 @@ initForm()
           >
           <select
             v-model="voiceId"
-            class="w-full p-[11px] border-[1.5px] border-[var(--border)] rounded-[var(--radius-sm)] text-sm text-[var(--text1)] bg-[var(--bg)] outline-none cursor-pointer"
+            class="w-full p-[11px] border-[1.5px] border-[var(--border)] rounded-[var(--radius-sm)] text-sm text-[var(--text1)] bg-[var(--bg)] outline-none cursor-pointer transition-all duration-200 focus:border-[var(--coral)] focus:shadow-[0_0_0_3px_rgba(255,107,107,.1)] focus:bg-white"
           >
             <option :value="null">默认音色</option>
             <option v-for="v in availableVoices" :key="v.id" :value="v.id">
-              {{ v.name }}
+              {{ v.name }} · {{ v.description }} · {{ v.providerVoiceName }}
             </option>
           </select>
         </div>
-
-        <div class="mb-[18px]">
-          <label
-            class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
-            >语速调节</label
-          >
-          <input
-            v-model.number="speed"
-            type="range"
-            min="0"
-            max="100"
-            class="w-full h-[5px] rounded-[3px] bg-[var(--bg2)] outline-none appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--coral)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(255,107,107,.35)]"
-          />
-          <div class="flex justify-between text-xs text-[var(--text3)] mt-1.5 font-semibold">
-            <span>🐢 慢速</span><span>🐇 快速</span>
-          </div>
-        </div>
-
-        <div class="mb-[18px]">
-          <label
-            class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
-            >音量大小</label
-          >
-          <input
-            v-model.number="volume"
-            type="range"
-            min="0"
-            max="100"
-            class="w-full h-[5px] rounded-[3px] bg-[var(--bg2)] outline-none appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--coral)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(255,107,107,.35)]"
-          />
-          <div class="flex justify-between text-xs text-[var(--text3)] mt-1.5 font-semibold">
-            <span>🔇 安静</span><span>🔊 响亮</span>
-          </div>
-        </div>
-
-        <div class="mb-[18px]">
-          <label
-            class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
-            >音调高低</label
-          >
-          <input
-            v-model.number="pitch"
-            type="range"
-            min="0"
-            max="100"
-            class="w-full h-[5px] rounded-[3px] bg-[var(--bg2)] outline-none appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--coral)] [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-[0_2px_8px_rgba(255,107,107,.35)]"
-          />
-          <div class="flex justify-between text-xs text-[var(--text3)] mt-1.5 font-semibold">
-            <span>低沉</span><span>高亢</span>
-          </div>
-        </div>
-        <InfoTip> 💡 调整完成后点击「试听」可以预览效果 </InfoTip>
       </div>
 
       <!--  知识库 -->

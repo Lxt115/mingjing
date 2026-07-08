@@ -20,6 +20,9 @@ from src.ws.voice import handle_voice
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    # 自动执行种子数据
+    from seed import seed
+    await seed()
     yield
     await engine.dispose()
 

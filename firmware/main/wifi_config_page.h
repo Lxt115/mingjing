@@ -1,6 +1,6 @@
 #pragma once
 
-/* WiFi 配网页面 - 参考 xiaozhi 热点配网 */
+/* WiFi 配网页面 */
 static const char WIFI_CONFIG_HTML[] =
 "<!DOCTYPE html>"
 "<html lang=\"zh-CN\">"

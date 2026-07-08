@@ -50,7 +50,7 @@ async def synthesize_speech_streaming(
 
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue = asyncio.Queue()
-    # 对应 xiaozhi 的 client_abort 标志：用于通知后台 TTS 回调停止入队
+    # stop_event：用于通知后台 TTS 回调停止入队
     stop_event = threading.Event()
 
     class StreamCallback(ResultCallback):
@@ -90,6 +90,4 @@ async def synthesize_speech_streaming(
             elif msg_type == "done":
                 return
     finally:
-        # 对应 xiaozhi 的 clear_queues：当异步生成器被废弃时（Task 被 cancel），
-        # 通知后台 TTS 线程停止向 queue 写入新数据
         stop_event.set()

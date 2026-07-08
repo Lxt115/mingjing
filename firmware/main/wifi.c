@@ -29,7 +29,7 @@ static const char *TAG = "wifi";
 #define WIFI_AP_SSID        "Aidoll-Config"
 #define WIFI_AP_MAX_CONN    4
 
-/* Station 连接超时 (秒) - 参考 xiaozhi CONNECT_TIMEOUT_SEC = 60 */
+/* Station 连接超时 (秒) */
 #define STATION_CONNECT_TIMEOUT_S 60
 
 EventGroupHandle_t wifi_event_group;
@@ -102,7 +102,7 @@ static void nvs_set_ap_mode_flag(void) {
     }
 }
 
-/* ── 设备绑定码（永久，存 NVS，与 xiaozhi 一致）── */
+/* ── 设备绑定码（永久，存 NVS）── */
 #define WIFI_NVS_KEY_BINDCODE "bind_code"
 
 const char* wifi_get_bind_code(void) {

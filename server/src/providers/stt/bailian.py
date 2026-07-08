@@ -1,7 +1,14 @@
+"""百炼 ASR 提供商 —— 基于阿里百炼 paraformer-realtime-v2 模型。
+
+使用 WebSocket duplex 协议进行语音识别。
+优化：PCM 输入直接内存转 WAV，跳过 ffmpeg 以降低延迟。
+"""
+
 import io
 import asyncio
 import json
 import uuid
+import wave
 import websockets
 import subprocess
 import tempfile
@@ -11,8 +18,19 @@ from src.config import settings
 from src.providers.stt.base import STTProvider
 
 
+def _pcm_to_wav_bytes(pcm_data: bytes, sample_rate: int = 16000, channels: int = 1, bits: int = 16) -> bytes:
+    """在内存中将 PCM 数据转换为 WAV 格式，避免 ffmpeg 开销。"""
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(bits // 8)
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_data)
+    return buf.getvalue()
+
+
 class BailianSTTProvider(STTProvider):
-    async def transcribe(self, audio_bytes: bytes, audio_format: str = "webm") -> str:
+    async def transcribe(self, audio_bytes: bytes, audio_format: str = "webm", max_retries: int = 2) -> str:
         if not settings.dashscope_api_key:
             return "[百炼 STT 未配置 API Key]"
 
@@ -20,56 +38,57 @@ class BailianSTTProvider(STTProvider):
         tmp_output = None
 
         try:
-            tmp_input = tempfile.NamedTemporaryFile(suffix=f".{audio_format}", delete=False)
-            tmp_input.write(audio_bytes)
-            tmp_input.close()
+            wav_data: bytes
 
-            tmp_output = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-            tmp_output.close()
-
+            # PCM 格式：内存直接转 WAV，跳过 ffmpeg
             if audio_format == "pcm":
-                cmd = [
-                    "ffmpeg", "-y",
-                    "-f", "s16le", "-ar", "16000", "-ac", "1",
-                    "-i", tmp_input.name,
-                    "-ar", "16000", "-ac", "1",
-                    "-f", "wav",
-                    tmp_output.name
-                ]
+                wav_data = _pcm_to_wav_bytes(audio_bytes)
             else:
+                # 其他格式：通过 ffmpeg 转换
+                tmp_input = tempfile.NamedTemporaryFile(suffix=f".{audio_format}", delete=False)
+                tmp_input.write(audio_bytes)
+                tmp_input.close()
+
+                tmp_output = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+                tmp_output.close()
+
                 cmd = [
                     "ffmpeg", "-y", "-i", tmp_input.name,
-                    "-ar", "16000", "-ac", "1",
-                    "-f", "wav",
-                    tmp_output.name
+                    "-ar", "16000", "-ac", "1", "-f", "wav",
+                    tmp_output.name,
                 ]
-            loop = asyncio.get_running_loop()
-            result = await loop.run_in_executor(
-                None,
-                lambda: subprocess.run(cmd, capture_output=True)
-            )
-            if result.returncode != 0:
-                return "[百炼 STT 音频转换失败]"
+                loop = asyncio.get_running_loop()
+                result = await loop.run_in_executor(
+                    None,
+                    lambda: subprocess.run(cmd, capture_output=True, timeout=30),
+                )
+                if result.returncode != 0:
+                    stderr = result.stderr.decode(errors="ignore")[:200] if result.stderr else ""
+                    return f"[百炼 STT 音频转换失败: {stderr}]"
 
-            with open(tmp_output.name, "rb") as f:
-                wav_data = f.read()
+                with open(tmp_output.name, "rb") as f:
+                    wav_data = f.read()
 
-            text = await self._recognize_via_websocket(wav_data)
-            return text if text else "[百炼 STT 未识别到文字]"
+            # 带重试的识别
+            last_error = ""
+            for attempt in range(max_retries):
+                try:
+                    text = await self._recognize_via_websocket(wav_data)
+                    if text and not text.startswith("["):
+                        return text
+                    last_error = text
+                except Exception as e:
+                    last_error = f"[百炼 STT 第{attempt+1}次: {type(e).__name__}: {e}]"
+                    if attempt < max_retries - 1:
+                        await asyncio.sleep(0.5)
+
+            return last_error or "[百炼 STT 未识别到文字]"
 
         except Exception as e:
             return f"[百炼 STT 异常: {type(e).__name__}: {e}]"
         finally:
-            if tmp_input and os.path.exists(tmp_input.name):
-                try:
-                    os.unlink(tmp_input.name)
-                except Exception:
-                    pass
-            if tmp_output and os.path.exists(tmp_output.name):
-                try:
-                    os.unlink(tmp_output.name)
-                except Exception:
-                    pass
+            _cleanup_temp(tmp_input)
+            _cleanup_temp(tmp_output)
 
     async def _recognize_via_websocket(self, wav_data: bytes) -> str:
         task_id = uuid.uuid4().hex[:32]
@@ -151,3 +170,12 @@ class BailianSTTProvider(STTProvider):
 
         except Exception as e:
             return f"[百炼 STT WebSocket 异常: {type(e).__name__}: {e}]"
+
+
+def _cleanup_temp(tmp_file) -> None:
+    """安全删除临时文件。"""
+    if tmp_file and os.path.exists(tmp_file.name):
+        try:
+            os.unlink(tmp_file.name)
+        except Exception:
+            pass
