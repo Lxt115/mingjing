@@ -5,20 +5,17 @@ menu "Aidoll Device Configuration"
 
 config DEVICE_ID
     string "Device ID (UUID)"
-    default "d1000000-0000-0000-0000-000000000001"
     help
         Unique identifier for this device. Used for the WebSocket
         device management channel (/ws/device/{id}).
 
 config DEVICE_AGENT_ID
     string "Agent ID"
-    default "c3000000-0000-0000-0000-000000000001"
     help
         The UUID of the AI agent to connect to.
 
 config DEVICE_SERVER_HOST
     string "Server Host"
-    default "192.168.1.100"
     help
         IP address or hostname of the backend server.
 
@@ -27,23 +24,5 @@ config DEVICE_SERVER_PORT
     default "8000"
     help
         Port number of the backend server (WebSocket).
-
-choice DEVICE_MIC_TYPE
-    prompt "Microphone Type"
-    default DEVICE_MIC_TYPE_I2S
-    help
-        Select the type of microphone connected to the device.
-
-config DEVICE_MIC_TYPE_I2S
-    bool "I2S Digital Mic (INMP441 etc.)"
-    help
-        Uses I2S interface on GPIO 4(BCK)/5(WS)/6(DIN).
-
-config DEVICE_MIC_TYPE_ADC
-    bool "ADC Analog Mic (on GPIO1)"
-    help
-        Uses ESP32-C3 ADC1 channel 1 on GPIO1.
-
-endchoice
 
 endmenu

@@ -57,22 +57,6 @@ def _get_current_time_info() -> tuple:
     return today_date, today_weekday, lunar_str
 
 
-async def _get_weather_info(location: str = "北京") -> str:
-    """获取天气信息（使用 wttr.in 免费 API）。"""
-    try:
-        import httpx
-        async with httpx.AsyncClient(timeout=5) as client:
-            resp = await client.get(
-                f"https://wttr.in/{location}?format=%C+%t&lang=zh",
-                headers={"User-Agent": "curl/7.0"},
-            )
-            if resp.status_code == 200:
-                return resp.text.strip()
-    except Exception:
-        pass
-    return ""
-
-
 class PromptManager:
     """系统提示词管理器。"""
 

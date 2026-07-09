@@ -55,10 +55,6 @@ export function createRealApiService(): ApiService {
       selectVoice: (id) => unwrap(httpClient.put<ApiResponse<null>>(`/voices/${id}/select`)),
     },
 
-    voiceLibrary: {
-      getList: () => unwrap(httpClient.get<ApiResponse<Voice[]>>('/voices')),
-    },
-
     knowledge: {
       getList: () => unwrap(httpClient.get<ApiResponse<KnowledgeBase[]>>('/knowledge')),
       getDetail: (id) => unwrap(httpClient.get<ApiResponse<KnowledgeDetail>>(`/knowledge/${id}`)),

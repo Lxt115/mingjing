@@ -7,15 +7,6 @@ int proto_build_audio_start(char *buf, int max_len) {
     return snprintf(buf, max_len, "{\"type\":\"audio_start\"}");
 }
 
-int proto_build_audio_chunk(char *buf, int max_len, const uint8_t *audio_b64, int b64_len) {
-    int off = snprintf(buf, max_len, "{\"type\":\"audio_chunk\",\"data\":\"");
-    if (off + b64_len + 3 > max_len) return off;
-    memcpy(buf + off, audio_b64, b64_len);
-    off += b64_len;
-    off += snprintf(buf + off, max_len - off, "\"}");
-    return off;
-}
-
 int proto_build_audio_end(char *buf, int max_len) {
     return snprintf(buf, max_len, "{\"type\":\"audio_end\"}");
 }

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
@@ -34,15 +33,15 @@ function navigate(path: string) {
     <div
       v-for="tab in tabs"
       :key="tab.path"
-      :class="['flex flex-col items-center gap-1 cursor-pointer py-1.5 px-0 transition-all duration-200']"
+      :class="[
+        'flex flex-col items-center gap-1 cursor-pointer py-1.5 px-0 transition-all duration-200',
+      ]"
       @click="navigate(tab.path)"
     >
       <div
         :class="[
           'w-7 h-7 rounded-[10px] flex items-center justify-center text-base transition-all duration-250',
-          isActive(tab)
-            ? 'bg-[var(--coral)] scale-110'
-            : 'bg-[var(--bg2)]',
+          isActive(tab) ? 'bg-[var(--coral)] scale-110' : 'bg-[var(--bg2)]',
         ]"
       >
         {{ tab.icon }}

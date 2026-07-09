@@ -9,7 +9,6 @@
 #include "esp_codec_dev.h"
 #include "esp_codec_dev_defaults.h"
 #include "es8311_codec.h"
-#include <string.h>
 
 static const char *TAG = "audio";
 

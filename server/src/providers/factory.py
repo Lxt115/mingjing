@@ -34,9 +34,6 @@ def _create_stt(name: str) -> STTProvider:
     if name == "bailian":
         from src.providers.stt.bailian import BailianSTTProvider
         return BailianSTTProvider()
-    elif name == "openai":
-        from src.providers.stt.openai_whisper import OpenAIWhisperSTTProvider
-        return OpenAIWhisperSTTProvider()
     else:
         raise ValueError(f"Unknown STT provider: {name}")
 
@@ -45,9 +42,6 @@ def _create_llm(name: str) -> LLMProvider:
     if name == "bailian":
         from src.providers.llm.bailian import BailianLLMProvider
         return BailianLLMProvider()
-    elif name == "openai":
-        from src.providers.llm.openai_llm import OpenAILLMProvider
-        return OpenAILLMProvider()
     elif name == "deepseek":
         from src.providers.llm.deepseek import DeepSeekLLMProvider
         return DeepSeekLLMProvider()

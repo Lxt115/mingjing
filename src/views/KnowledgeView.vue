@@ -99,10 +99,7 @@ function categoryLabel(kb: KnowledgeBase) {
 }
 
 function categoryClass(kb: KnowledgeBase) {
-  if (kb.isSystem) return 'bg-[#e8fdf5] text-[var(--teal)]'
-  return kb.status === 'enabled'
-    ? 'bg-[#e8fdf5] text-[var(--teal)]'
-    : 'bg-[#fff0f0] text-[var(--coral)]'
+  return kb.isEnabled ? 'bg-[#e8fdf5] text-[var(--teal)]' : 'bg-[#fff0f0] text-[var(--coral)]'
 }
 
 function borderColor(kb: KnowledgeBase) {

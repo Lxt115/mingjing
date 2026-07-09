@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import type { Device } from '@/types'
 import { apiService } from '@/services'
 
@@ -7,14 +7,6 @@ export const useDevicesStore = defineStore('devices', () => {
   const devices = ref<Device[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
-
-  const onlineDevices = computed(() =>
-    devices.value.filter((d) => d.status === 'online'),
-  )
-
-  const offlineDevices = computed(() =>
-    devices.value.filter((d) => d.status === 'offline'),
-  )
 
   async function fetchDevices() {
     loading.value = true
@@ -90,17 +82,6 @@ export const useDevicesStore = defineStore('devices', () => {
     }
   }
 
-  function toggleAutoUpgrade(id: string) {
-    const device = devices.value.find((d) => d.id === id)
-    if (device) {
-      device.autoUpgrade = !device.autoUpgrade
-    }
-  }
-
-  function getDevicesByAgent(agentId: string) {
-    return devices.value.filter((d) => d.boundAgentId === agentId)
-  }
-
   function clearError() {
     error.value = null
   }
@@ -109,15 +90,11 @@ export const useDevicesStore = defineStore('devices', () => {
     devices,
     loading,
     error,
-    onlineDevices,
-    offlineDevices,
     fetchDevices,
     bindDevice,
     unbindDevice,
     upgradeFirmware,
     assignRole,
-    toggleAutoUpgrade,
-    getDevicesByAgent,
     clearError,
   }
 })

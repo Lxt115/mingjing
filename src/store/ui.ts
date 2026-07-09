@@ -20,11 +20,7 @@ export const useUiStore = defineStore('ui', () => {
 
   const isModalOpen = computed(() => activeModalId.value !== null)
 
-  function showToast(
-    text: string,
-    type: ToastMessage['type'] = 'success',
-    duration = 2500,
-  ) {
+  function showToast(text: string, type: ToastMessage['type'] = 'success', duration = 2500) {
     const id = ++toastSeq
     toasts.value.push({ id, text, type })
     setTimeout(() => {
@@ -46,10 +42,6 @@ export const useUiStore = defineStore('ui', () => {
     sidebarCollapsed.value = !sidebarCollapsed.value
   }
 
-  function setMemoryTip(visible: boolean) {
-    memoryTipVisible.value = visible
-  }
-
   function triggerKbRefresh() {
     kbRefreshCounter.value++
   }
@@ -59,14 +51,12 @@ export const useUiStore = defineStore('ui', () => {
     activeModalId,
     modalData,
     sidebarCollapsed,
-    memoryTipVisible,
     kbRefreshCounter,
     isModalOpen,
     showToast,
     openModal,
     closeModal,
     toggleSidebar,
-    setMemoryTip,
     triggerKbRefresh,
   }
 })

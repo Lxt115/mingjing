@@ -44,10 +44,6 @@ async def synthesize_speech_streaming(
     volume: float = 1.0,
     pitch: float = 1.0,
 ) -> AsyncGenerator[bytes, None]:
-    dashscope.base_websocket_api_url = (
-        "wss://dashscope.aliyuncs.com/api-ws/v1/inference"
-    )
-
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue = asyncio.Queue()
     # stop_event：用于通知后台 TTS 回调停止入队

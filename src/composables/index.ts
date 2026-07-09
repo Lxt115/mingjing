@@ -1,5 +1,4 @@
 export { useModal } from './useModal'
 export { useVoiceRecord } from './useVoiceRecord'
 export { useDeviceBind } from './useDeviceBind'
-export { useFormValidator, required, minLength, numeric } from './useFormValidator'
 export { useMediaQuery } from './useMediaQuery'

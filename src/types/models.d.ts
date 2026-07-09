@@ -145,10 +145,6 @@ export interface UserProfile {
   avatarEmoji: string
 }
 
-export interface NotificationSettings {
-  enabled: boolean
-}
-
 export interface PromptTemplate {
   key: string
   name: string

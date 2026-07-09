@@ -1,14 +1,11 @@
 #pragma once
-#include "esp_err.h"
 #include "driver/i2c_master.h"
 #include <stdint.h>
 
 #define DEVICE_AUDIO_SAMPLE_RATE  16000
 #define DEVICE_AUDIO_BIT_WIDTH    16
-#define DEVICE_AUDIO_CHUNK_MS     40
-#define DEVICE_AUDIO_CHUNK_BYTES  (DEVICE_AUDIO_SAMPLE_RATE * (DEVICE_AUDIO_BIT_WIDTH / 8) * DEVICE_AUDIO_CHUNK_MS / 1000)
 
-/* Xmini C3 pin definitions */
+/* Pin definitions */
 #define I2S_BCK      8
 #define I2S_WS       6
 #define I2S_DIN      7

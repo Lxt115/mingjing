@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUiStore, useUserStore } from '@/store'
 import { useMediaQuery } from '@/composables'
@@ -9,15 +8,9 @@ const ui = useUiStore()
 const user = useUserStore()
 const router = useRouter()
 const { isMobile } = useMediaQuery()
-const memoryEnabled = ref(true)
 
 function navigateTo(path: string) {
   router.push(path)
-}
-
-function toggleMemory() {
-  memoryEnabled.value = !memoryEnabled.value
-  ui.showToast(memoryEnabled.value ? '🧠 记忆已开启' : '🔒 记忆已关闭')
 }
 </script>
 
@@ -280,8 +273,8 @@ function toggleMemory() {
           <span class="text-[var(--text3)] text-sm">›</span>
         </div>
         <div
-          class="row-item flex items-center justify-between px-4 py-3.5 cursor-pointer"
-          @click="toggleMemory"
+          class="row-item flex items-center justify-between px-4 py-3.5 cursor-pointer active:bg-[var(--bg)]"
+          @click="navigateTo('/knowledge')"
         >
           <div class="flex items-center gap-2.5">
             <div
@@ -294,15 +287,7 @@ function toggleMemory() {
               <div class="text-xs text-[var(--text3)] mt-px">自动学习对话，形成个性化知识</div>
             </div>
           </div>
-          <div
-            class="toggle-mobile w-[46px] h-[26px] rounded-[13px] relative cursor-pointer transition-colors duration-250 shrink-0"
-            :class="memoryEnabled ? 'bg-[var(--teal)]' : 'bg-[var(--bg2)]'"
-          >
-            <div
-              class="absolute w-5 h-5 rounded-full bg-white top-[3px] shadow-[0_1px_4px_rgba(0,0,0,.2)] transition-transform duration-250"
-              :class="memoryEnabled ? 'translate-x-5' : 'left-[3px]'"
-            ></div>
-          </div>
+          <span class="text-[var(--text3)] text-sm">›</span>
         </div>
       </div>
 
@@ -367,5 +352,3 @@ function toggleMemory() {
     </div>
   </div>
 </template>
-
-<style scoped></style>

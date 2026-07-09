@@ -16,4 +16,3 @@ class TTSProvider(ABC):
         speed: float = 1.0, volume: float = 1.0, pitch: float = 1.0,
     ) -> AsyncGenerator[bytes, None]:
         ...
-        yield b""

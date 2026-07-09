@@ -33,20 +33,7 @@ export const useAgentsStore = defineStore('agents', () => {
     },
   ]
 
-  const selectedAgent = computed(() =>
-    agents.value.find((a) => a.id === selectedAgentId.value) ?? null,
-  )
-
-  const onlineAgents = computed(() =>
-    agents.value.filter((a) => a.status === 'online'),
-  )
-
-  const stats = computed(() => ({
-    total: agents.value.length,
-    online: agents.value.filter((a) => a.status === 'online').length,
-    totalConversations: 0,
-    totalHours: 0,
-  }))
+  const onlineAgents = computed(() => agents.value.filter((a) => a.status === 'online'))
 
   async function fetchAgents() {
     loading.value = true
@@ -121,9 +108,7 @@ export const useAgentsStore = defineStore('agents', () => {
     loading,
     error,
     promptTemplates,
-    selectedAgent,
     onlineAgents,
-    stats,
     fetchAgents,
     createAgent,
     updateAgent,

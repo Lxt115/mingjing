@@ -18,19 +18,6 @@ export const useUserStore = defineStore('user', () => {
   const error = ref<string | null>(null)
   const notificationEnabled = ref(true)
 
-  async function fetchProfile() {
-    loading.value = true
-    error.value = null
-    try {
-      const res = await apiService.user.getProfile()
-      profile.value = res.data
-    } catch (e) {
-      error.value = e instanceof Error ? e.message : '获取用户信息失败'
-    } finally {
-      loading.value = false
-    }
-  }
-
   async function toggleNotification() {
     const next = !notificationEnabled.value
     try {
@@ -41,17 +28,11 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  function clearError() {
-    error.value = null
-  }
-
   return {
     profile,
     loading,
     error,
     notificationEnabled,
-    fetchProfile,
     toggleNotification,
-    clearError,
   }
 })

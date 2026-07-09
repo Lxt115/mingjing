@@ -4,8 +4,6 @@
 #define DISPLAY_I2C_ADDR  0x3C
 #define DISPLAY_WIDTH     128
 #define DISPLAY_HEIGHT    64
-#define DISPLAY_COLS      16    // 128/8 = 16 chars per line (8x8 font)
-#define DISPLAY_ROWS      8     // 64/8 = 8 lines
 
 /**
  * Initialize the SSD1306 OLED display on the shared I2C bus.

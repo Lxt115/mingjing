@@ -20,7 +20,6 @@
 static const char *TAG = "wifi";
 
 /* ── NVS ── */
-#define WIFI_NVS_NAMESPACE  "wifi_cfg"
 #define WIFI_NVS_KEY_SSID   "ssid"
 #define WIFI_NVS_KEY_PWD    "password"
 #define WIFI_NVS_KEY_APMODE "ap_mode"
@@ -61,27 +60,16 @@ esp_err_t wifi_save_credentials(const char *ssid, const char *password) {
     esp_err_t err = nvs_open(WIFI_NVS_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK) return err;
 
-    /* 保存凭据同时清除 AP 模式标记 */
     err = nvs_set_str(handle, WIFI_NVS_KEY_SSID, ssid);
     if (err == ESP_OK) {
         err = nvs_set_str(handle, WIFI_NVS_KEY_PWD, password);
     }
-    /* 清除 AP 模式标记（如果不存在则忽略错误，不影响 commit） */
     nvs_erase_key(handle, WIFI_NVS_KEY_APMODE);
     if (err == ESP_OK) {
         err = nvs_commit(handle);
     }
     nvs_close(handle);
     return err;
-}
-
-void wifi_erase_credentials(void) {
-    nvs_handle_t handle;
-    if (nvs_open(WIFI_NVS_NAMESPACE, NVS_READWRITE, &handle) == ESP_OK) {
-        nvs_erase_all(handle);
-        nvs_commit(handle);
-        nvs_close(handle);
-    }
 }
 
 static bool nvs_get_ap_mode_flag(void) {

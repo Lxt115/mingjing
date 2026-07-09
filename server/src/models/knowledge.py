@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import String, Boolean, DateTime, Text, JSON
+from sqlalchemy import String, Boolean, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models.base import Base, TimestampMixin
 

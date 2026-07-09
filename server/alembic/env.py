@@ -1,4 +1,3 @@
-import asyncio
 from src.models.base import Base
 from src.models.agent import Agent
 from src.models.device import Device

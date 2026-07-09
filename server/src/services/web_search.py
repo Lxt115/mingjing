@@ -25,20 +25,6 @@ def extract_search_query(text: str) -> str | None:
     return None
 
 
-def inject_search_prompt(system_prompt: str) -> str:
-    """在系统提示词中注入联网搜索指令。"""
-    search_instruction = (
-        "\n\n## 联网搜索能力\n"
-        "你可以使用联网搜索来获取最新信息。如果需要搜索，请在回复中输出：\n"
-        "<SEARCH>搜索关键词</SEARCH>\n"
-        "服务器会自动执行搜索并将结果提供给你，然后你基于搜索结果回答用户。\n"
-        "注意：只在确实需要最新信息时才使用搜索，普通对话直接回答即可。"
-    )
-    if system_prompt:
-        return system_prompt + search_instruction
-    return search_instruction
-
-
 def _search_metaso(api_key: str, query: str, max_results: int) -> str:
     """调用秘塔搜索API。"""
     url = "https://metaso.cn/api/v1/search"

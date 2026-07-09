@@ -9,3 +9,5 @@ class ChatPipelineResponse(CamelModel):
     audio_error: str = ""
     conversation_id: uuid.UUID | None = None
     transcribed_text: str | None = None
+    emoji: str = ""
+    emotion: str = "neutral"

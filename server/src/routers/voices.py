@@ -25,5 +25,5 @@ async def select_voice(voice_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/clone", status_code=201)
-async def clone_voice(db: AsyncSession = Depends(get_db)):
-    return ApiResponse(data={"id": str(uuid.uuid4()), "name": "我的声音克隆", "isCloned": True}, timestamp=time.time())
+async def clone_voice():
+    raise HTTPException(status_code=501, detail="Voice cloning not yet implemented")

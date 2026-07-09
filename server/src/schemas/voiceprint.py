@@ -14,4 +14,3 @@ class VoiceprintSpeakerResponse(CamelModel):
 
 class VoiceprintRegisterRequest(CamelModel):
     name: str = Field(..., min_length=1, max_length=50)
-    voice_sample_id: str = ""

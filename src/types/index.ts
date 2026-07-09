@@ -20,7 +20,6 @@ export type {
   Message,
   Conversation,
   UserProfile,
-  NotificationSettings,
   PromptTemplate,
   ModalId,
   ModalState,
@@ -28,8 +27,6 @@ export type {
 
 export type {
   ApiResponse,
-  PaginatedData,
-  PaginatedResponse,
   AgentsApi,
   DevicesApi,
   VoicesApi,

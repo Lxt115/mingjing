@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 
+#define WIFI_NVS_NAMESPACE  "wifi_cfg"
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
@@ -38,11 +39,6 @@ esp_err_t wifi_save_credentials(const char *ssid, const char *password);
  */
 bool wifi_load_credentials(char *ssid_out, size_t ssid_size,
                            char *pwd_out, size_t pwd_size);
-
-/**
- * @brief 清除 NVS 中的 WiFi 凭据
- */
-void wifi_erase_credentials(void);
 
 /**
  * @brief 获取设备绑定码（永久，首次调用时自动生成并存入 NVS）

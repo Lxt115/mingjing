@@ -6,7 +6,6 @@
 #include "freertos/event_groups.h"
 #include "esp_system.h"
 #include "esp_log.h"
-#include "esp_timer.h"
 #include "nvs_flash.h"
 #include "driver/gpio.h"
 
@@ -21,6 +20,7 @@
 #include "i2s_audio.h"
 #include "protocol.h"
 #include "display.h"
+#include "cJSON.h"
 
 #define WS_URL_MAX 256
 
@@ -42,7 +42,6 @@ static char g_server_host[64] = "";
 static char g_server_port[16] = "";
 
 static QueueHandle_t s_playback_queue = NULL;
-static TaskHandle_t s_record_task = NULL;
 static bool s_recording = false;
 static volatile bool s_aborted = false;  // 打断标志：阻止 playback_task 在打断后重新播放
 
@@ -58,10 +57,10 @@ static char g_disp_tts[384] = {0};          // 语音合成文本（累积）
 
 // ── 设备状态机（DeviceState 枚举值）──
 typedef enum {
-    kDeviceStateIdle = 3,        // 空闲
-    kDeviceStateConnecting = 4,  // 连接中（发送 audio_start 后等待服务端就绪）
-    kDeviceStateListening = 5,   // 录音中
-    kDeviceStateSpeaking = 6,    // 播放中
+    kDeviceStateIdle = 0,        // 空闲
+    kDeviceStateConnecting = 1,  // 连接中（发送 audio_start 后等待服务端就绪）
+    kDeviceStateListening = 2,   // 录音中
+    kDeviceStateSpeaking = 3,    // 播放中
 } DeviceState;
 
 static DeviceState s_device_state = kDeviceStateIdle;
@@ -154,7 +153,6 @@ static void HandleWsDisconnected(void) {
     // 2. 停止正在进行的录音
     if (s_recording) {
         s_recording = false;
-        s_record_task = NULL;
     }
 
     // 3. 终止播放：清空播放队列 + 停止硬件
@@ -254,7 +252,7 @@ static void HandleStartListeningEvent(void) {
         SetDeviceState(kDeviceStateListening);  // 直接在调用线程切状态，零延迟
 
         xTaskCreatePinnedToCore(record_task, "record", 32768, NULL, 5,
-                                &s_record_task, tskNO_AFFINITY);
+                                NULL, tskNO_AFFINITY);
         ESP_LOGI(TAG, "recording started");
     }
 }
@@ -507,7 +505,6 @@ static void record_task(void *arg) {
     }
 
     free(rx_buf); free(opus_buf);
-    s_record_task = NULL;
     vTaskDelete(NULL);
 }
 
@@ -518,8 +515,6 @@ static void btn_init(void) {
 }
 
 /* ── NVS: 持久化 agent_id（重启后恢复绑定角色）── */
-
-#define WIFI_NVS_NAMESPACE  "wifi_cfg"
 
 static void nvs_save_agent_id(const char *agent_id) {
     nvs_handle_t handle;
@@ -663,7 +658,7 @@ static void app_main_task(void *arg) {
                      g_server_host, g_server_port, g_agent_id);
 
             /* 先停播放/录音 */
-            if (s_recording) { s_recording = false; s_record_task = NULL; }
+            if (s_recording) { s_recording = false; }
             xQueueReset(s_playback_queue);
             i2s_playback_stop();
 

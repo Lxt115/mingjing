@@ -27,9 +27,7 @@ const configNav: NavItemConfig[] = [
   { path: '/voiceprint', label: '声纹识别', icon: '🎙️' },
 ]
 
-const accountNav: NavItemConfig[] = [
-  { path: '/profile', label: '我的', icon: '👤' },
-]
+const accountNav: NavItemConfig[] = [{ path: '/profile', label: '我的', icon: '👤' }]
 
 function isActive(path: string): boolean {
   return route.path === path || route.path.startsWith(path + '/')
@@ -47,11 +45,17 @@ function navigate(path: string) {
       ui.sidebarCollapsed ? 'w-0' : 'w-[var(--sidebar-w)]',
     ]"
   >
-    <div class="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-[radial-gradient(circle,rgba(255,107,107,.18)_0%,transparent_70%)] pointer-events-none"></div>
-    <div class="absolute bottom-10 -left-[60px] w-[180px] h-[180px] rounded-full bg-[radial-gradient(circle,rgba(0,201,167,.1)_0%,transparent_70%)] pointer-events-none"></div>
+    <div
+      class="absolute -top-20 -right-20 w-60 h-60 rounded-full bg-[radial-gradient(circle,rgba(255,107,107,.18)_0%,transparent_70%)] pointer-events-none"
+    ></div>
+    <div
+      class="absolute bottom-10 -left-[60px] w-[180px] h-[180px] rounded-full bg-[radial-gradient(circle,rgba(0,201,167,.1)_0%,transparent_70%)] pointer-events-none"
+    ></div>
 
     <div class="flex items-center gap-3 px-6 pt-7 pb-6 border-b border-white/7">
-      <div class="w-9 h-9 rounded-[10px] bg-gradient-to-br from-[var(--coral)] to-[#FF8E53] flex items-center justify-center text-lg shadow-[0_4px_12px_rgba(255,107,107,.4)] shrink-0">
+      <div
+        class="w-9 h-9 rounded-[10px] bg-gradient-to-br from-[var(--coral)] to-[#FF8E53] flex items-center justify-center text-lg shadow-[0_4px_12px_rgba(255,107,107,.4)] shrink-0"
+      >
         🪞
       </div>
       <div>
@@ -71,19 +75,18 @@ function navigate(path: string) {
         <button
           :class="[
             'flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-sm)] cursor-pointer border-none text-left w-full transition-all duration-200 relative bg-transparent',
-            isActive(item.path)
-              ? 'bg-[rgba(255,107,107,.16)]'
-              : 'hover:bg-white/6',
+            isActive(item.path) ? 'bg-[rgba(255,107,107,.16)]' : 'hover:bg-white/6',
           ]"
           @click="navigate(item.path)"
         >
-          <div v-if="isActive(item.path)" class="absolute left-0 top-1/5 bottom-1/5 w-[3px] rounded-[2px] bg-[var(--coral)]"></div>
+          <div
+            v-if="isActive(item.path)"
+            class="absolute left-0 top-1/5 bottom-1/5 w-[3px] rounded-[2px] bg-[var(--coral)]"
+          ></div>
           <div
             :class="[
               'w-8 h-8 rounded-lg flex items-center justify-center text-[15px] shrink-0 transition-all duration-200',
-              isActive(item.path)
-                ? 'bg-[rgba(255,107,107,.25)]'
-                : 'bg-white/6',
+              isActive(item.path) ? 'bg-[rgba(255,107,107,.25)]' : 'bg-white/6',
             ]"
           >
             {{ item.icon }}
@@ -96,16 +99,12 @@ function navigate(path: string) {
           >
             {{ item.label }}
           </span>
-          <span
-            v-if="item.badge"
-            class="ml-auto text-[10px] font-extrabold bg-[var(--coral)] text-white px-1.5 py-0.5 rounded-[10px]"
-          >
-            {{ item.badge }}
-          </span>
         </button>
       </template>
 
-      <div class="text-[10px] font-bold text-white/30 tracking-[1.2px] uppercase px-3 pt-[14px] pb-1.5">
+      <div
+        class="text-[10px] font-bold text-white/30 tracking-[1.2px] uppercase px-3 pt-[14px] pb-1.5"
+      >
         配置
       </div>
       <button
@@ -113,19 +112,18 @@ function navigate(path: string) {
         :key="item.path"
         :class="[
           'flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-sm)] cursor-pointer border-none text-left w-full transition-all duration-200 relative bg-transparent',
-          isActive(item.path)
-            ? 'bg-[rgba(255,107,107,.16)]'
-            : 'hover:bg-white/6',
+          isActive(item.path) ? 'bg-[rgba(255,107,107,.16)]' : 'hover:bg-white/6',
         ]"
         @click="navigate(item.path)"
       >
-        <div v-if="isActive(item.path)" class="absolute left-0 top-1/5 bottom-1/5 w-[3px] rounded-[2px] bg-[var(--coral)]"></div>
+        <div
+          v-if="isActive(item.path)"
+          class="absolute left-0 top-1/5 bottom-1/5 w-[3px] rounded-[2px] bg-[var(--coral)]"
+        ></div>
         <div
           :class="[
             'w-8 h-8 rounded-lg flex items-center justify-center text-[15px] shrink-0 transition-all duration-200',
-            isActive(item.path)
-              ? 'bg-[rgba(255,107,107,.25)]'
-              : 'bg-white/6',
+            isActive(item.path) ? 'bg-[rgba(255,107,107,.25)]' : 'bg-white/6',
           ]"
         >
           {{ item.icon }}
@@ -140,7 +138,9 @@ function navigate(path: string) {
         </span>
       </button>
 
-      <div class="text-[10px] font-bold text-white/30 tracking-[1.2px] uppercase px-3 pt-[14px] pb-1.5">
+      <div
+        class="text-[10px] font-bold text-white/30 tracking-[1.2px] uppercase px-3 pt-[14px] pb-1.5"
+      >
         账号
       </div>
       <button
@@ -148,19 +148,18 @@ function navigate(path: string) {
         :key="item.path"
         :class="[
           'flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-sm)] cursor-pointer border-none text-left w-full transition-all duration-200 relative bg-transparent',
-          isActive(item.path)
-            ? 'bg-[rgba(255,107,107,.16)]'
-            : 'hover:bg-white/6',
+          isActive(item.path) ? 'bg-[rgba(255,107,107,.16)]' : 'hover:bg-white/6',
         ]"
         @click="navigate(item.path)"
       >
-        <div v-if="isActive(item.path)" class="absolute left-0 top-1/5 bottom-1/5 w-[3px] rounded-[2px] bg-[var(--coral)]"></div>
+        <div
+          v-if="isActive(item.path)"
+          class="absolute left-0 top-1/5 bottom-1/5 w-[3px] rounded-[2px] bg-[var(--coral)]"
+        ></div>
         <div
           :class="[
             'w-8 h-8 rounded-lg flex items-center justify-center text-[15px] shrink-0 transition-all duration-200',
-            isActive(item.path)
-              ? 'bg-[rgba(255,107,107,.25)]'
-              : 'bg-white/6',
+            isActive(item.path) ? 'bg-[rgba(255,107,107,.25)]' : 'bg-white/6',
           ]"
         >
           {{ item.icon }}
@@ -180,7 +179,9 @@ function navigate(path: string) {
       class="flex items-center gap-2.5 px-5 py-4 border-t border-white/7 cursor-pointer hover:bg-white/4 transition-colors duration-200"
       @click="navigate('/profile')"
     >
-      <div class="w-9 h-9 rounded-[10px] bg-gradient-to-br from-[var(--indigo)] to-[var(--teal)] flex items-center justify-center text-lg shrink-0">
+      <div
+        class="w-9 h-9 rounded-[10px] bg-gradient-to-br from-[var(--indigo)] to-[var(--teal)] flex items-center justify-center text-lg shrink-0"
+      >
         {{ user.profile.avatarEmoji }}
       </div>
       <div>

@@ -1,5 +1,4 @@
 #pragma once
-#include "cJSON.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -21,11 +20,9 @@ typedef struct {
     char text[1024];
     char content[PROTO_BUF_SIZE];
     int  content_len;
-    bool has_audio;
 } proto_msg_t;
 
 int  proto_build_audio_start(char *buf, int max_len);
-int  proto_build_audio_chunk(char *buf, int max_len, const uint8_t *audio_b64, int b64_len);
 int  proto_build_audio_end(char *buf, int max_len);
 int  proto_build_abort(char *buf, int max_len);
 bool proto_parse(const char *json_str, int len, proto_msg_t *out);

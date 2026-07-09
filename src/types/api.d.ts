@@ -19,15 +19,6 @@ export interface ApiResponse<T = unknown> {
   timestamp: number
 }
 
-export interface PaginatedData<T> {
-  items: T[]
-  total: number
-  page: number
-  pageSize: number
-}
-
-export interface PaginatedResponse<T> extends ApiResponse<PaginatedData<T>> {}
-
 export interface AgentsApi {
   getList(): Promise<ApiResponse<Agent[]>>
   getById(id: string): Promise<ApiResponse<Agent>>
@@ -86,7 +77,6 @@ export interface ApiService {
   agents: AgentsApi
   devices: DevicesApi
   voices: VoicesApi
-  voiceLibrary: VoiceLibraryApi
   knowledge: KnowledgeApi
   voiceprint: VoiceprintApi
   history: HistoryApi

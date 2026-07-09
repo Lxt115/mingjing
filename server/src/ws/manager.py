@@ -1,6 +1,4 @@
 import uuid
-import base64
-import asyncio
 from dataclasses import dataclass, field
 from fastapi import WebSocket
 

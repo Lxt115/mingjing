@@ -48,7 +48,6 @@ class Settings(BaseSettings):
 
     # ── TTS 音色 ──
     edge_tts_voice: str = "zh-CN-XiaoxiaoNeural"
-    openai_tts_voice: str = "alloy"
 
     # ── 联网搜索 ──
     # 搜索服务商：metaso | tavily

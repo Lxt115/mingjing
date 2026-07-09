@@ -68,13 +68,6 @@ function openAddSpeaker() {
       <Button v-else-if="route.path === '/voiceprint'" @click="openAddSpeaker">
         ＋ 添加说话人
       </Button>
-      <Button
-        v-else-if="route.path === '/voice-library'"
-        variant="secondary"
-        @click="ui.showToast('✅ 已确认使用')"
-      >
-        确认使用
-      </Button>
     </div>
   </header>
 </template>

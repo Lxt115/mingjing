@@ -30,7 +30,7 @@ function confirmSelection() {
 }
 
 onMounted(async () => {
-  const res = await apiService.voiceLibrary.getList()
+  const res = await apiService.voices.getList()
   voices.value = res.data
 })
 </script>
@@ -234,5 +234,3 @@ onMounted(async () => {
     </div>
   </div>
 </template>
-
-<style scoped></style>

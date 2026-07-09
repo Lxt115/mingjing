@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import { useModal } from '@/composables'
 import { useUiStore } from '@/store'
 import { apiService } from '@/services'
-import { InfoTip } from '@/components/ui'
 
 const { close } = useModal()
 const ui = useUiStore()
@@ -72,7 +71,9 @@ async function confirmUpload() {
 <template>
   <div>
     <div class="mb-[18px]">
-      <label class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2">知识库名称</label>
+      <label class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
+        >知识库名称</label
+      >
       <input
         v-model="kbName"
         class="w-full p-[11px] border-[1.5px] border-[var(--border)] rounded-[var(--radius-sm)] text-sm text-[var(--text1)] bg-[var(--bg)] outline-none transition-all duration-200 focus:border-[var(--coral)] focus:shadow-[0_0_0_3px_rgba(255,107,107,.1)] focus:bg-white"
@@ -81,7 +82,9 @@ async function confirmUpload() {
     </div>
 
     <div class="mb-[18px]">
-      <label class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2">选择文件</label>
+      <label class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
+        >选择文件</label
+      >
       <input
         ref="fileInput"
         type="file"
@@ -91,9 +94,11 @@ async function confirmUpload() {
       />
       <div
         class="border-2 border-dashed rounded-[var(--radius-md)] py-7 px-5 text-center cursor-pointer transition-all duration-200 bg-[var(--bg)]"
-        :class="selectedFile
-          ? 'border-[var(--teal)] bg-[#e8fdf5]'
-          : 'border-[var(--border)] hover:border-[var(--indigo-lt)] hover:bg-[#eef0fc]'"
+        :class="
+          selectedFile
+            ? 'border-[var(--teal)] bg-[#e8fdf5]'
+            : 'border-[var(--border)] hover:border-[var(--indigo-lt)] hover:bg-[#eef0fc]'
+        "
         @click="triggerFileInput"
         @dragover="onDragOver"
         @drop="onDragDrop"
@@ -101,10 +106,15 @@ async function confirmUpload() {
         <template v-if="selectedFile">
           <div class="text-[32px] mb-2">📄</div>
           <div class="text-sm font-bold text-[var(--text1)] mb-1">{{ selectedFile.name }}</div>
-          <div class="text-xs text-[var(--text3)]">{{ (selectedFile.size / 1024).toFixed(1) }} KB</div>
+          <div class="text-xs text-[var(--text3)]">
+            {{ (selectedFile.size / 1024).toFixed(1) }} KB
+          </div>
           <button
             class="mt-2 text-xs font-bold text-[var(--coral)] bg-none border-none cursor-pointer"
-            @click.stop="selectedFile = null; if (fileInput) fileInput.value = ''"
+            @click.stop="
+              selectedFile = null
+              if (fileInput) fileInput.value = ''
+            "
           >
             移除文件
           </button>

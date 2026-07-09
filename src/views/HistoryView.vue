@@ -7,6 +7,13 @@ import { useAgentsStore } from '@/store'
 import { FilterChips } from '@/components/ui'
 import { formatTime } from '@/utils'
 
+function accentBg(color: string): string {
+  if (color === 'var(--teal)') return '#e8fdf5'
+  if (color === 'var(--indigo)') return '#eef0fc'
+  if (color === 'var(--amber)') return '#fff8e6'
+  return '#fff0f0'
+}
+
 const { isMobile } = useMediaQuery()
 const agentsStore = useAgentsStore()
 
