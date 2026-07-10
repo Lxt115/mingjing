@@ -12,11 +12,11 @@ from src.models.voice import Voice
 
 
 SEED_VOICES = [
-    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000001"), "name": "温柔 · 女声", "character": "温", "description": "中文 · 温柔自然，适合日常对话", "language": "中文", "gender": "female", "category": "female", "gradient": "linear-gradient(135deg, #f093fb, #f5576c)", "provider_voice_name": "zh_female_vv_uranus_bigtts"},
-    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000002"), "name": "清新 · 女声", "character": "清", "description": "中文 · 清新活泼，适合儿童陪伴", "language": "中文", "gender": "female", "category": "female", "gradient": "linear-gradient(135deg, #4facfe, #00f2fe)", "provider_voice_name": "zh_female_qingxin"},
-    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000003"), "name": "沉稳 · 男声", "character": "稳", "description": "中文 · 沉稳大气，适合知识讲解", "language": "中文", "gender": "male", "category": "male", "gradient": "linear-gradient(135deg, #0fd850, #f9f047)", "provider_voice_name": "zh_male_M392_conversation_wvae_bigtts"},
-    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000004"), "name": "阳光 · 男声", "character": "朗", "description": "中文 · 阳光开朗，适合儿童陪伴", "language": "中文", "gender": "male", "category": "male", "gradient": "linear-gradient(135deg, #667eea, #764ba2)", "provider_voice_name": "zh_male_qingrun"},
-    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000005"), "name": "Sunny · English", "character": "En", "description": "English · Friendly & natural", "language": "英语", "gender": "female", "category": "english", "gradient": "linear-gradient(135deg, #f5af19, #f12711)", "provider_voice_name": "en_female_arrogant"},
+    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000001"), "name": "温柔 · Vivi", "character": "温", "description": "中文 · 温柔自然，适合日常对话", "language": "中文", "gender": "female", "category": "female", "gradient": "linear-gradient(135deg, #f093fb, #f5576c)", "provider_voice_name": "zh_female_vv_uranus_bigtts"},
+    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000002"), "name": "甜美 · Mindy", "character": "甜", "description": "中文 · 甜美活泼，适合儿童陪伴", "language": "中文", "gender": "female", "category": "female", "gradient": "linear-gradient(135deg, #4facfe, #00f2fe)", "provider_voice_name": "zh_female_xiaohe_uranus_bigtts"},
+    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000003"), "name": "沉稳 · Kian", "character": "稳", "description": "中文 · 沉稳大气，适合知识讲解", "language": "中文", "gender": "male", "category": "male", "gradient": "linear-gradient(135deg, #0fd850, #f9f047)", "provider_voice_name": "zh_male_m191_uranus_bigtts"},
+    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000004"), "name": "阳光 · Cedric", "character": "朗", "description": "中文 · 阳光开朗，适合儿童陪伴", "language": "中文", "gender": "male", "category": "male", "gradient": "linear-gradient(135deg, #667eea, #764ba2)", "provider_voice_name": "zh_male_taocheng_uranus_bigtts"},
+    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000005"), "name": "Sweet · Dacey", "character": "En", "description": "English · Sweet & warm", "language": "英语", "gender": "female", "category": "english", "gradient": "linear-gradient(135deg, #f5af19, #f12711)", "provider_voice_name": "en_female_dacey_uranus_bigtts"},
 ]
 
 SEED_AGENTS = [

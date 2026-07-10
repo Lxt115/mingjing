@@ -113,12 +113,10 @@ class VolcanoTTSProvider(TTSProvider):
                     raise RuntimeError(f"火山 TTS HTTP {resp.status_code}: {body.decode(errors='ignore')[:300]}")
 
                 chunk_count = 0
-                all_lines = []  # debug
                 async for line in resp.aiter_lines():
                     line_s = line.strip()
                     if not line_s:
                         continue
-                    all_lines.append(line_s[:200])
                     try:
                         obj = json.loads(line_s)
                         audio_b64 = obj.get("data", "") or ""
@@ -129,5 +127,4 @@ class VolcanoTTSProvider(TTSProvider):
                         pass
 
                 if chunk_count == 0:
-                    print(f"[TTS] 火山返回了 {len(all_lines)} 行响应: {all_lines[:3]}")
-                    raise RuntimeError("火山 TTS 未返回有效音频，可能是音色与文本语言不匹配")
+                    raise RuntimeError("火山 TTS 未返回有效音频，音色名可能不匹配 seed-tts-2.0 模型")
