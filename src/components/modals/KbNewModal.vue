@@ -111,10 +111,7 @@ async function confirmUpload() {
           </div>
           <button
             class="mt-2 text-xs font-bold text-[var(--coral)] bg-none border-none cursor-pointer"
-            @click.stop="
-              selectedFile = null
-              if (fileInput) fileInput.value = ''
-            "
+            @click.stop="selectedFile = null; if (fileInput) fileInput.value = ''"
           >
             移除文件
           </button>
