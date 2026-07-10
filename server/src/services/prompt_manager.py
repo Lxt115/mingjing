@@ -7,7 +7,10 @@
 - 结果缓存避免重复构建
 """
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+# 北京时间（UTC+8）
+CHINA_TZ = timezone(timedelta(hours=8))
 from pathlib import Path
 from typing import Optional
 
@@ -44,7 +47,7 @@ def _template_dir() -> Path:
 
 def _get_current_time_info() -> tuple:
     """获取当前时间信息：日期、星期、农历。"""
-    now = datetime.now()
+    now = datetime.now(CHINA_TZ)
     today_date = now.strftime("%Y-%m-%d")
     today_weekday = WEEKDAY_MAP.get(now.strftime("%A"), now.strftime("%A"))
     # 优先使用 cnlunar（更丰富），回退 zhdate
@@ -202,7 +205,7 @@ class PromptManager:
             template = Template(self.template)
             result = template.render(
                 base_prompt=base_prompt,
-                current_time=f"{datetime.now().strftime('%H:%M')}",
+                current_time=f"{datetime.now(CHINA_TZ).strftime('%H:%M')}",
                 today_date=today_date,
                 today_weekday=today_weekday,
                 lunar_date=lunar_date,
