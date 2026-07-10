@@ -202,7 +202,7 @@ class PromptManager:
             template = Template(self.template)
             result = template.render(
                 base_prompt=base_prompt,
-                current_time=f"{{{{current_time}}}}",
+                current_time=f"{datetime.now().strftime('%H:%M')}",
                 today_date=today_date,
                 today_weekday=today_weekday,
                 lunar_date=lunar_date,
@@ -210,7 +210,7 @@ class PromptManager:
                 weather_info=weather,
                 emojiList=EMOJI_LIST,
                 device_id=agent_id,
-                client_ip="",
+                client_ip=client_ip,
                 dynamic_context=dynamic_context,
                 language=language,
                 emoji_enabled=emoji_enabled,

@@ -118,9 +118,11 @@ async def handle_voice(ws: WebSocket, agent_id: str):
                     pcm_buffer = bytearray()
 
                     async with async_session_factory() as db:
+                        # 通过 nginx 代理时，从 X-Real-IP 获取真实客户端 IP
+                        real_ip = ws.headers.get("x-real-ip") or ws.client.host
                         async for event in pipeline.speech_pipeline_stream(
                             db, audio_bytes, "pcm", agent_uuid, conn.conversation_id,
-                            client_ip=ws.client.host,
+                            client_ip=real_ip,
                         ):
                             event_type = event["type"]
 

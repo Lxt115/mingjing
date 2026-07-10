@@ -20,6 +20,9 @@ from datetime import datetime, timezone
 
 MAX_HISTORY_MESSAGES = 20
 
+# 预编译正则，避免每次 _handle_tool_calls 都重新编译
+SEARCH_TAG_CLEAN_RE = re.compile(r"<SEARCH>.*?</SEARCH>", re.DOTALL)
+
 
 async def _load_agent(db: AsyncSession, agent_id: uuid.UUID) -> Agent | None:
     result = await db.execute(
@@ -395,7 +398,6 @@ async def _handle_tool_calls(text: str, messages: list[dict], full_text: str,
     
     Returns: (messages, full_text, search_depth, tool_depth, should_continue)
     """
-    SEARCH_TAG_RE = re.compile(r"<SEARCH>.*?</SEARCH>", re.DOTALL)
     MAX_SEARCH_DEPTH = 3
     MAX_TOOL_DEPTH = 3
 
@@ -423,7 +425,7 @@ async def _handle_tool_calls(text: str, messages: list[dict], full_text: str,
         search_depth += 1
         print(f"[DEBUG] 联网搜索 #{search_depth}: {search_query}")
         search_result = search(search_query)
-        clean_text = SEARCH_TAG_RE.sub("", text).strip()
+        clean_text = SEARCH_TAG_CLEAN_RE.sub("", text).strip()
         if clean_text:
             full_text += clean_text
         messages.append({
@@ -434,7 +436,7 @@ async def _handle_tool_calls(text: str, messages: list[dict], full_text: str,
 
     # 无需工具或搜索，去除标签后返回
     clean_text = remove_tool_tags(text)
-    clean_text = SEARCH_TAG_RE.sub("", clean_text) if search_depth > 0 or tool_depth > 0 else text
+    clean_text = SEARCH_TAG_CLEAN_RE.sub("", clean_text) if search_depth > 0 or tool_depth > 0 else text
     full_text += clean_text
     return messages, full_text, search_depth, tool_depth, False
 
