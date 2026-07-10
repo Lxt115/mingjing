@@ -186,6 +186,7 @@ async def handle_voice(ws: WebSocket, agent_id: str):
                 except asyncio.CancelledError:
                     print("[voice] pipeline cancelled by abort")
                 except Exception as e:
+                    print(f"[voice] pipeline error: {type(e).__name__}: {e}")
                     await manager.send_json(ws, {"type": "error", "message": str(e)})
                 finally:
                     pipeline_task = None

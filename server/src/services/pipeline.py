@@ -253,8 +253,11 @@ async def speech_pipeline_stream(
     final_answer = full_text
     yield {"type": "text_chunk", "content": final_answer}
 
+    print(f"[PIPELINE] LLM done, answer_len={len(final_answer)}, starting TTS...")
     voice_name = _pick_voice_name(agent)
+    print(f"[PIPELINE] voice_name={voice_name}")
     tts = get_tts()
+    print(f"[PIPELINE] tts provider type={type(tts).__name__}")
     audio_error = ""
     total_tts_bytes = 0
     total_tts_chunks = 0
