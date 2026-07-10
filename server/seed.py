@@ -2,17 +2,21 @@ import asyncio
 import uuid
 
 from sqlalchemy import select
-from src.database import async_session_factory
+from src.database import async_session_factory, engine
+from src.models.base import Base
 from src.models.agent import Agent
+from src.models.device import Device               # noqa: F401
+from src.models.knowledge import KnowledgeBase     # noqa: F401
+from src.models.conversation import Conversation   # noqa: F401
 from src.models.voice import Voice
 
 
 SEED_VOICES = [
-    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000001"), "name": "甜美 · 活泼", "character": "甜", "description": "中文 · 适合儿童陪伴", "language": "中文", "gender": "female", "category": "female", "gradient": "linear-gradient(135deg, #f093fb, #f5576c)", "provider_voice_name": "longanhuan"},
-    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000002"), "name": "温柔 · 安心", "character": "温", "description": "中文 · 适合睡前故事", "language": "中文", "gender": "female", "category": "female", "gradient": "linear-gradient(135deg, #4facfe, #00f2fe)", "provider_voice_name": "zh-CN-XiaoxiaoNeural"},
-    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000003"), "name": "朗朗 · 阳光", "character": "朗", "description": "中文 · 适合儿童陪伴", "language": "中文", "gender": "male", "category": "male", "gradient": "linear-gradient(135deg, #0fd850, #f9f047)", "provider_voice_name": "longanyang"},
-    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000004"), "name": "沉稳 · 知识感", "character": "稳", "description": "中文 · 适合科普问答", "language": "中文", "gender": "male", "category": "male", "gradient": "linear-gradient(135deg, #4facfe, #00f2fe)", "provider_voice_name": "zh-CN-YunxiNeural"},
-    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000005"), "name": "Lily · 美式英语", "character": "En", "description": "English · 亲切自然", "language": "英语", "gender": "female", "category": "english", "gradient": "linear-gradient(135deg, #667eea, #764ba2)", "provider_voice_name": "en-US-JennyNeural"},
+    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000001"), "name": "温柔 · 女声", "character": "温", "description": "中文 · 温柔自然，适合日常对话", "language": "中文", "gender": "female", "category": "female", "gradient": "linear-gradient(135deg, #f093fb, #f5576c)", "provider_voice_name": "zh_female_vv_uranus_bigtts"},
+    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000002"), "name": "清新 · 女声", "character": "清", "description": "中文 · 清新活泼，适合儿童陪伴", "language": "中文", "gender": "female", "category": "female", "gradient": "linear-gradient(135deg, #4facfe, #00f2fe)", "provider_voice_name": "zh_female_qingxin"},
+    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000003"), "name": "沉稳 · 男声", "character": "稳", "description": "中文 · 沉稳大气，适合知识讲解", "language": "中文", "gender": "male", "category": "male", "gradient": "linear-gradient(135deg, #0fd850, #f9f047)", "provider_voice_name": "zh_male_M392_conversation_wvae_bigtts"},
+    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000004"), "name": "阳光 · 男声", "character": "朗", "description": "中文 · 阳光开朗，适合儿童陪伴", "language": "中文", "gender": "male", "category": "male", "gradient": "linear-gradient(135deg, #667eea, #764ba2)", "provider_voice_name": "zh_male_qingrun"},
+    {"id": uuid.UUID("a1000000-0000-0000-0000-000000000005"), "name": "Sunny · English", "character": "En", "description": "English · Friendly & natural", "language": "英语", "gender": "female", "category": "english", "gradient": "linear-gradient(135deg, #f5af19, #f12711)", "provider_voice_name": "en_female_arrogant"},
 ]
 
 SEED_AGENTS = [
@@ -44,6 +48,9 @@ SEED_AGENTS = [
 
 
 async def seed():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
     async with async_session_factory() as db:
         existing = (await db.execute(select(Agent))).scalars().first()
         if existing:

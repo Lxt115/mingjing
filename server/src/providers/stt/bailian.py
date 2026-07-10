@@ -1,4 +1,4 @@
-"""百炼 ASR 提供商 —— 基于阿里百炼 paraformer-realtime-v2 模型。
+"""百炼 ASR 提供商 —— 基于阿里百炼 fun-asr-realtime 模型。
 
 使用 WebSocket duplex 协议进行语音识别。
 优化：PCM 输入直接内存转 WAV，跳过 ffmpeg 以降低延迟。
@@ -16,6 +16,16 @@ import os
 
 from src.config import settings
 from src.providers.stt.base import STTProvider
+
+
+def _ws_connect(url, headers):
+    """兼容 websockets v14+/v16 的 connect 调用"""
+    import inspect
+    sig = inspect.signature(websockets.connect)
+    if "additional_headers" in sig.parameters:
+        return websockets.connect(url, additional_headers=headers)
+    else:
+        return websockets.connect(url, extra_headers=headers)
 
 
 def _pcm_to_wav_bytes(pcm_data: bytes, sample_rate: int = 16000, channels: int = 1, bits: int = 16) -> bytes:
@@ -98,7 +108,7 @@ class BailianSTTProvider(STTProvider):
         }
 
         try:
-            async with websockets.connect(ws_url, extra_headers=headers) as ws:
+            async with _ws_connect(ws_url, headers) as ws:
                 run_task_msg = {
                     "header": {
                         "action": "run-task",
@@ -109,7 +119,7 @@ class BailianSTTProvider(STTProvider):
                         "task_group": "audio",
                         "task": "asr",
                         "function": "recognition",
-                        "model": "paraformer-realtime-v2",
+                        "model": "fun-asr-realtime",
                         "parameters": {
                             "format": "wav",
                             "sample_rate": 16000
@@ -134,7 +144,11 @@ class BailianSTTProvider(STTProvider):
 
                         if event == "task-started":
                             task_started = True
-                            await ws.send(wav_data)
+                            # 分块发送大音频（每块 128KB，避免超过服务端消息限制）
+                            chunk_size = 128 * 1024
+                            for i in range(0, len(wav_data), chunk_size):
+                                await ws.send(wav_data[i:i + chunk_size])
+                                await asyncio.sleep(0.01)
 
                             finish_task_msg = {
                                 "header": {

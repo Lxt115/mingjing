@@ -29,15 +29,16 @@ class Settings(BaseSettings):
         return f"mysql+aiomysql://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}?charset=utf8mb4"
 
     # ── Provider 选择 ──
-    # stt:  bailian  | openai
+    # stt:  bailian
     stt_provider: str = "bailian"
-    # tts:  bailian  | edge
-    tts_provider: str = "bailian"
+    # tts:  volcano
+    tts_provider: str = "volcano"
     # llm:  bailian  | openai | deepseek
     llm_provider: str = "deepseek"
 
     # ── API Keys ──
     dashscope_api_key: str = ""
+    volcano_api_key: str = ""
     openai_api_key: str = ""
     openai_base_url: str = ""      # 自定义端点，DeepSeek 填 https://api.deepseek.com/v1
     deepseek_api_key: str = ""     # DeepSeek API key（也可复用 openai_api_key）
@@ -45,9 +46,6 @@ class Settings(BaseSettings):
     # ── LLM 模型名 ──
     openai_model: str = "gpt-4o-mini"
     deepseek_model: str = "deepseek-chat"  # V4-Flash，不开思考模式
-
-    # ── TTS 音色 ──
-    edge_tts_voice: str = "zh-CN-XiaoxiaoNeural"
 
     # ── 联网搜索 ──
     # 搜索服务商：metaso | tavily
@@ -59,7 +57,7 @@ class Settings(BaseSettings):
     server_port: int = 8000
     cors_origins: str = "http://localhost:5173"
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()

@@ -50,11 +50,11 @@ def _create_llm(name: str) -> LLMProvider:
 
 
 def _create_tts(name: str) -> TTSProvider:
-    if name == "bailian":
+    if name == "volcano":
+        from src.providers.tts.volcano import VolcanoTTSProvider
+        return VolcanoTTSProvider()
+    elif name == "bailian":
         from src.providers.tts.bailian import BailianTTSProvider
         return BailianTTSProvider()
-    elif name == "edge":
-        from src.providers.tts.edge_tts import EdgeTTSProvider
-        return EdgeTTSProvider()
     else:
         raise ValueError(f"Unknown TTS provider: {name}")

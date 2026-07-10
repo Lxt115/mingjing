@@ -16,13 +16,35 @@ const tabs = [
   { id: 'fav', label: '收藏' },
 ]
 
+const audioEl = ref<HTMLAudioElement | null>(null)
+const playingId = ref<string | null>(null)
+
 function selectVoice(voice: Voice) {
   voice.selected = !voice.selected
-  ui.showToast(voice.selected ? `✅ 已选中 ${voice.name}` : `已取消 ${voice.name}`)
+  ui.showToast(voice.selected ? `已选中 ${voice.name}` : `已取消 ${voice.name}`)
 }
 
 function playPreview(voice: Voice) {
-  ui.showToast(`🔊 试听中：${voice.name}`)
+  if (playingId.value === voice.id) {
+    audioEl.value?.pause()
+    playingId.value = null
+    return
+  }
+  const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api'
+  const url = `${baseUrl}/voices/${voice.id}/preview`
+  if (!audioEl.value) {
+    audioEl.value = new Audio()
+    audioEl.value.addEventListener('ended', () => {
+      playingId.value = null
+    })
+    audioEl.value.addEventListener('error', () => {
+      playingId.value = null
+      ui.showToast('试听失败')
+    })
+  }
+  audioEl.value.src = url
+  audioEl.value.play().catch(() => ui.showToast('试听失败'))
+  playingId.value = voice.id
 }
 
 function confirmSelection() {
@@ -115,7 +137,7 @@ onMounted(async () => {
             class="w-full h-9 rounded-lg bg-[var(--bg2)] text-[var(--text2)] border-none text-xs font-extrabold cursor-pointer transition-all duration-200 hover:bg-[var(--border)]"
             @click.stop="playPreview(voice)"
           >
-            ▶ 试听
+            {{ playingId === voice.id ? '⏸ 暂停' : '▶ 试听' }}
           </button>
         </div>
       </div>
@@ -205,7 +227,7 @@ onMounted(async () => {
               class="w-8 h-8 rounded-full bg-[var(--bg2)] border-none cursor-pointer flex items-center justify-center text-xs text-[var(--text2)] transition-all duration-200 active:scale-[.9]"
               @click.stop="playPreview(voice)"
             >
-              ▶
+              {{ playingId === voice.id ? '⏸' : '▶' }}
             </button>
             <div
               v-if="voice.selected"
