@@ -18,3 +18,6 @@ python-multipart==0.0.20
 websockets==12.0
 pydub==0.1.1
 requests==2.32.3
+beautifulsoup4==4.13.3
+cnlunar==0.2.4
+zhdate==0.1

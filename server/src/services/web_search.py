@@ -105,8 +105,26 @@ def search(query: str) -> str:
         return "[联网搜索未配置API Key，请在 .env 中设置 SEARCH_API_KEY]"
 
     if provider == "metaso":
-        return _search_metaso(api_key, query, max_results)
+        search_fn = lambda: _search_metaso(api_key, query, max_results)
     elif provider == "tavily":
-        return _search_tavily(api_key, query, max_results)
+        search_fn = lambda: _search_tavily(api_key, query, max_results)
     else:
         return f"[不支持的搜索提供商: {provider}]"
+
+    try:
+        return search_fn()
+    except requests.exceptions.Timeout:
+        print(f"[web_search] 搜索请求超时: {query}")
+        return "[联网搜索请求超时，请稍后重试。]"
+    except requests.exceptions.HTTPError as e:
+        print(f"[web_search] HTTP错误 {e.response.status_code if e.response else '?'}: {e}")
+        status_code = e.response.status_code if e.response else 0
+        if status_code == 401 or status_code == 403:
+            return "[联网搜索API Key无效或已过期，请检查配置。]"
+        return f"[联网搜索请求失败（HTTP {status_code}），请稍后重试。]"
+    except requests.exceptions.RequestException as e:
+        print(f"[web_search] 请求失败: {e}")
+        return "[联网搜索请求失败，请稍后重试。]"
+    except Exception as e:
+        print(f"[web_search] 搜索异常: {e}")
+        return "[联网搜索出现异常，请稍后重试。]"

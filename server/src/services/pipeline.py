@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from src.config import settings
 from src.models.agent import Agent
 from src.models.conversation import Conversation, Message
 from src.providers.factory import get_stt, get_llm, get_tts
@@ -94,6 +95,7 @@ async def _build_llm_messages(
     agent: Agent,
     user_text: str,
     conversation_id: uuid.UUID | None,
+    client_ip: str = "",
 ) -> tuple[str, list[dict]]:
     history = await _load_history(db, conversation_id) if conversation_id else []
 
@@ -108,6 +110,8 @@ async def _build_llm_messages(
     system_prompt = pm.build_enhanced_prompt(
         base_prompt=agent.system_prompt or "",
         agent_id=str(agent.id),
+        location=settings.weather_default_location,
+        client_ip=client_ip,
         language="中文",
         emoji_enabled=True,
     )
@@ -160,12 +164,13 @@ async def chat_pipeline(
     text: str,
     agent_id: uuid.UUID,
     conversation_id: uuid.UUID | None = None,
+    client_ip: str = "",
 ) -> dict:
     agent = await _load_agent(db, agent_id)
     if not agent:
         return {"error": "角色不存在"}
 
-    system_prompt, messages = await _build_llm_messages(db, agent, text, conversation_id)
+    system_prompt, messages = await _build_llm_messages(db, agent, text, conversation_id, client_ip)
 
     llm = get_llm()
     llm_text = await llm.chat(messages=messages, system_prompt=system_prompt)
@@ -196,13 +201,14 @@ async def speech_pipeline(
     audio_format: str,
     agent_id: uuid.UUID,
     conversation_id: uuid.UUID | None = None,
+    client_ip: str = "",
 ) -> dict:
     stt = get_stt()
     text = await stt.transcribe(audio_bytes, audio_format)
     if text.startswith("["):
         return {"error": text}
 
-    result = await chat_pipeline(db, text, agent_id, conversation_id)
+    result = await chat_pipeline(db, text, agent_id, conversation_id, client_ip)
     result["transcribed_text"] = text
     return result
 
@@ -213,6 +219,7 @@ async def speech_pipeline_stream(
     audio_format: str,
     agent_id: uuid.UUID,
     conversation_id: uuid.UUID | None = None,
+    client_ip: str = "",
 ):
     stt = get_stt()
     text = await stt.transcribe(audio_bytes, audio_format)
@@ -227,7 +234,7 @@ async def speech_pipeline_stream(
         yield {"type": "error", "message": "角色不存在"}
         return
 
-    system_prompt, messages = await _build_llm_messages(db, agent, text, conversation_id)
+    system_prompt, messages = await _build_llm_messages(db, agent, text, conversation_id, client_ip)
 
     llm = get_llm()
 
@@ -302,13 +309,14 @@ async def chat_pipeline_stream(
     text: str,
     agent_id: uuid.UUID,
     conversation_id: uuid.UUID | None = None,
+    client_ip: str = "",
 ):
     agent = await _load_agent(db, agent_id)
     if not agent:
         yield {"type": "error", "message": "角色不存在"}
         return
 
-    system_prompt, messages = await _build_llm_messages(db, agent, text, conversation_id)
+    system_prompt, messages = await _build_llm_messages(db, agent, text, conversation_id, client_ip)
 
     llm = get_llm()
 

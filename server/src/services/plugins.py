@@ -112,3 +112,23 @@ async def execute_tool(name: str, params_text: str, **kwargs) -> ActionResponse 
 async def handle_exit(say_goodbye: str = "", params_text: str = "", **kwargs) -> ActionResponse:
     goodbye = say_goodbye or params_text or "再见，期待下次聊天！"
     return ActionResponse(result=goodbye, action=Action.RESPONSE)
+
+
+@register(name="get_news", description="查看新闻。参数: source（新闻源，如'澎湃新闻''百度热搜'，可选）, detail（true获取上一条详情，可选）", action=Action.REQLLM)
+async def handle_get_news(source: str = "", detail: bool = False, params_text: str = "", **kwargs) -> ActionResponse:
+    from src.services.get_news import get_news
+
+    if isinstance(detail, str):
+        detail = detail.lower() == "true"
+    news_text = get_news(source=source, detail=detail)
+    return ActionResponse(result=news_text, action=Action.REQLLM)
+
+
+@register(name="get_lunar", description="查询黄历/农历。参数: date（日期YYYY-MM-DD，默认今天）, query（查询内容如'宜忌''八字''节气'，可选）", action=Action.REQLLM)
+async def handle_get_lunar(date: str = "", query: str = "", params_text: str = "", **kwargs) -> ActionResponse:
+    from src.services.get_lunar import get_lunar
+
+    date = date or None
+    query = query or params_text or None
+    lunar_text = get_lunar(date_str=date, query=query)
+    return ActionResponse(result=lunar_text, action=Action.REQLLM)

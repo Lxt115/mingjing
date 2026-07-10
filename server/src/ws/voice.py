@@ -120,6 +120,7 @@ async def handle_voice(ws: WebSocket, agent_id: str):
                     async with async_session_factory() as db:
                         async for event in pipeline.speech_pipeline_stream(
                             db, audio_bytes, "pcm", agent_uuid, conn.conversation_id,
+                            client_ip=ws.client.host,
                         ):
                             event_type = event["type"]
 

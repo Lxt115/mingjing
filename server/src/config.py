@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     search_api_key: str = ""
     search_max_results: int = 3
 
+    # ── 天气查询（和风天气）──
+    weather_api_host: str = "mj7p3y7naa.re.qweatherapi.com"
+    weather_api_key: str = "a861d0d5e7bf4ee1a83d9a9e4f96d4da"
+    weather_default_location: str = "北京"
+
     # ── 服务 ──
     server_port: int = 8000
     cors_origins: str = "http://localhost:5173"

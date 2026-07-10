@@ -47,13 +47,21 @@ def _get_current_time_info() -> tuple:
     now = datetime.now()
     today_date = now.strftime("%Y-%m-%d")
     today_weekday = WEEKDAY_MAP.get(now.strftime("%A"), now.strftime("%A"))
-    # 简化农历（可用 zhdate 库精确计算，这里用简化版本）
+    # 优先使用 cnlunar（更丰富），回退 zhdate
     try:
-        from zhdate import ZhDate
-        lunar = ZhDate.from_datetime(now)
-        lunar_str = f"{lunar.lunar()}年{lunar.lunar_month_name}{lunar.lunar_day_name}"
+        import cnlunar
+        lunar = cnlunar.Lunar(now, godType="8char")
+        lunar_str = (
+            f"{lunar.lunarYearCn}年{lunar.lunarMonthCn}{lunar.lunarDayCn}"
+            f"（{lunar.year8Char}年·{lunar.chineseYearZodiac}）"
+        )
     except ImportError:
-        lunar_str = "（农历模块未安装）"
+        try:
+            from zhdate import ZhDate
+            lunar = ZhDate.from_datetime(now)
+            lunar_str = f"{lunar.lunar()}年{lunar.lunar_month_name}{lunar.lunar_day_name}"
+        except ImportError:
+            lunar_str = "（农历模块未安装）"
     return today_date, today_weekday, lunar_str
 
 
@@ -74,12 +82,64 @@ class PromptManager:
         else:
             print(f"[prompt_manager] 模板文件不存在: {template_path}，使用简单模式")
 
+    def _get_weather(self, location: str) -> str:
+        """获取天气信息（带缓存）。"""
+        try:
+            from src.services.get_weather import get_weather
+            from src.config import settings
+
+            api_key = settings.weather_api_key
+            api_host = settings.weather_api_host
+            return get_weather(
+                location=location,
+                api_host=api_host,
+                api_key=api_key,
+            )
+        except Exception as e:
+            print(f"[prompt_manager] 天气获取失败: {e}")
+            return ""
+
+    def _get_ip_location(self, client_ip: str) -> str:
+        """通过 IP 获取城市名。"""
+        if not client_ip:
+            return ""
+        try:
+            import requests
+
+            # 简单内存缓存（同 IP 不重复查）
+            cache_key = f"ip_loc:{client_ip}"
+            if cache_key in self._cache:
+                cached = self._cache[cache_key]
+                if (datetime.now() - cached[0]).total_seconds() < 86400:  # 24h
+                    return cached[1]
+
+            # 私有 IP 跳过
+            if client_ip.startswith(("192.168.", "10.", "172.16.", "172.17.", "172.18.",
+                                     "172.19.", "172.20.", "172.21.", "172.22.", "172.23.",
+                                     "172.24.", "172.25.", "172.26.", "172.27.", "172.28.",
+                                     "172.29.", "172.30.", "172.31.", "127.")):
+                print(f"[prompt_manager] 私有 IP 跳过定位: {client_ip}")
+                return ""
+
+            url = f"https://whois.pconline.com.cn/ipJson.jsp?json=true&ip={client_ip}"
+            resp = requests.get(url, timeout=5)
+            data = resp.json()
+            city = data.get("city", "")
+            if city:
+                self._cache[cache_key] = (datetime.now(), city)
+                print(f"[prompt_manager] IP 定位: {client_ip} → {city}")
+            return city
+        except Exception as e:
+            print(f"[prompt_manager] IP 定位失败: {e}")
+            return ""
+
     def build_enhanced_prompt(
         self,
         base_prompt: str,
         agent_id: str = "",
         location: str = "北京",
         weather: str = "",
+        client_ip: str = "",
         language: str = "中文",
         emoji_enabled: bool = True,
         dynamic_context: str = "",
@@ -89,13 +149,23 @@ class PromptManager:
         Args:
             base_prompt: 角色的 system_prompt
             agent_id: 角色 ID（用于缓存）
-            location: 位置（默认北京）
+            location: 默认位置（会被 IP 定位覆盖）
             weather: 天气文本
+            client_ip: 客户端 IP（用于自动定位）
             language: 回复语言
             emoji_enabled: 是否启用表情
             dynamic_context: 额外动态上下文
         """
         today_date, today_weekday, lunar_date = _get_current_time_info()
+
+        # IP 自动定位：优先使用 IP 获取的城市
+        ip_city = self._get_ip_location(client_ip) if client_ip else ""
+        if ip_city:
+            location = ip_city
+
+        # 如果没有显式传入天气，尝试自动获取
+        if not weather and location:
+            weather = self._get_weather(location)
 
         # 简单模板模式（无 agent-base-prompt.txt）
         if not self.template:
