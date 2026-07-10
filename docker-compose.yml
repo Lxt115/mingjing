@@ -18,6 +18,8 @@ services:
     build:
       context: ./server
     container_name: mingjing-backend
+    environment:
+      TZ: Asia/Shanghai
     env_file:
       - ./server/.env.production
     depends_on:

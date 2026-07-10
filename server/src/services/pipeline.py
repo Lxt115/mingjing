@@ -2,6 +2,7 @@ import uuid
 import re
 import base64
 import asyncio
+from datetime import datetime, timezone, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,8 +17,8 @@ from src.services.memory import build_memory_injection, summarize_and_save
 from src.services.prompt_manager import get_prompt_manager, EMOJI_MAP
 from src.services.plugins import build_tools_prompt, extract_tool_calls, remove_tool_tags, execute_tool
 from src.services.tts_utils import clean_tts_text
-from datetime import datetime, timezone
 
+CHINA_TZ = timezone(timedelta(hours=8))
 MAX_HISTORY_MESSAGES = 20
 
 # 预编译正则，避免每次 _handle_tool_calls 都重新编译
@@ -64,7 +65,7 @@ async def _persist_conversation(
         conv = conv_result.scalar_one_or_none()
         if conv:
             conv.preview = user_text[:50]
-            conv.time = datetime.now().strftime("%H:%M")
+            conv.time = datetime.now(CHINA_TZ).strftime("%H:%M")
             conv.message_count = conv.message_count + 2
             await db.flush()
         else:
@@ -80,7 +81,7 @@ async def _persist_conversation(
             accent_color=_agent_color(agent),
             accent_bg=_agent_bg(agent),
             date_label="今天",
-            time=datetime.now().strftime("%H:%M"),
+            time=datetime.now(CHINA_TZ).strftime("%H:%M"),
             message_count=2,
         )
         db.add(conv)

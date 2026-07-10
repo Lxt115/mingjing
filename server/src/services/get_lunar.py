@@ -4,7 +4,9 @@
 提供天干地支、生肖、八字、节气、宜忌等黄历信息。
 """
 
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+CHINA_TZ = timezone(timedelta(hours=8))
 
 
 def get_lunar(date_str: str | None = None, query: str | None = None) -> str:
@@ -25,7 +27,7 @@ def get_lunar(date_str: str | None = None, query: str | None = None) -> str:
         except ValueError:
             return f"日期格式错误，请使用 YYYY-MM-DD 格式，例如 2024-01-01"
     else:
-        now = datetime.now()
+        now = datetime.now(CHINA_TZ).replace(tzinfo=None)
 
     if query is None:
         query = "默认"

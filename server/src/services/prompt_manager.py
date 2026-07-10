@@ -48,12 +48,13 @@ def _template_dir() -> Path:
 def _get_current_time_info() -> tuple:
     """获取当前时间信息：日期、星期、农历。"""
     now = datetime.now(CHINA_TZ)
+    now_naive = now.replace(tzinfo=None)  # cnlunar/zhdate 不接受带时区的 datetime
     today_date = now.strftime("%Y-%m-%d")
     today_weekday = WEEKDAY_MAP.get(now.strftime("%A"), now.strftime("%A"))
     # 优先使用 cnlunar（更丰富），回退 zhdate
     try:
         import cnlunar
-        lunar = cnlunar.Lunar(now, godType="8char")
+        lunar = cnlunar.Lunar(now_naive, godType="8char")
         lunar_str = (
             f"{lunar.lunarYearCn}年{lunar.lunarMonthCn}{lunar.lunarDayCn}"
             f"（{lunar.year8Char}年·{lunar.chineseYearZodiac}）"
@@ -61,7 +62,7 @@ def _get_current_time_info() -> tuple:
     except ImportError:
         try:
             from zhdate import ZhDate
-            lunar = ZhDate.from_datetime(now)
+            lunar = ZhDate.from_datetime(now_naive)
             lunar_str = f"{lunar.lunar()}年{lunar.lunar_month_name}{lunar.lunar_day_name}"
         except ImportError:
             lunar_str = "（农历模块未安装）"
@@ -176,7 +177,7 @@ class PromptManager:
 
             # 动态上下文
             ctx_lines = []
-            ctx_lines.append(f"- 当前时间：{datetime.now().strftime('%H:%M')}")
+            ctx_lines.append(f"- 当前时间：{datetime.now(CHINA_TZ).strftime('%H:%M')}")
             ctx_lines.append(f"- 今天日期：{today_date}（{today_weekday}）")
             if lunar_date and "农历模块未安装" not in lunar_date:
                 ctx_lines.append(f"- 今天农历：{lunar_date}")
