@@ -1,6 +1,7 @@
 """火山 TTS 提供商 —— 基于豆包语音合成模型 2.0 (seed-tts-2.0)。
 
-使用 V3 HTTP 单向流式接口，流式返回 base64 编码的 MP3 音频。
+- synthesize: 非流式，返回 MP3（用于试听）
+- synthesize_streaming: 流式，返回 PCM 16kHz（用于实时语音输出）
 """
 
 import asyncio
@@ -97,8 +98,8 @@ class VolcanoTTSProvider(TTSProvider):
                 "text": text,
                 "speaker": voice_name,
                 "audio_params": {
-                    "format": "mp3",
-                    "sample_rate": 24000,
+                    "format": "pcm",
+                    "sample_rate": 16000,
                     "speech_rate": int((speed - 1.0) * 100),
                     "loudness_rate": int((volume - 1.0) * 100),
                 },
