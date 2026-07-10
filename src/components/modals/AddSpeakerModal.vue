@@ -30,7 +30,7 @@ async function confirmAdd() {
   }
   saving.value = true
   try {
-    await apiService.voiceprint.register(speakerName.value.trim())
+    await apiService.voiceprint.register(speakerName.value.trim(), voiceSampleId.value)
     close()
     ui.showToast(`✅ 「${speakerName.value.trim()}」声纹已注册！`)
   } catch (e) {
