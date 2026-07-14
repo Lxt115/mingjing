@@ -25,7 +25,9 @@ class Agent(Base, TimestampMixin):
     speed: Mapped[float] = mapped_column(Float, default=1.0)
     volume: Mapped[float] = mapped_column(Float, default=1.0)
     pitch: Mapped[float] = mapped_column(Float, default=1.0)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, default=None, index=True)
 
     devices = relationship("Device", back_populates="agent", lazy="selectin")
     knowledges = relationship("KnowledgeBase", secondary=agent_knowledge, back_populates="agents", lazy="selectin")
     voice = relationship("Voice", back_populates="agents", lazy="selectin")
+    user = relationship("User", lazy="selectin")

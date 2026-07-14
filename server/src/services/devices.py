@@ -9,17 +9,22 @@ from src.schemas.device import DeviceResponse
 from src.ws.manager import manager
 
 
-async def list_devices(db: AsyncSession) -> list[DeviceResponse]:
+async def list_devices(db: AsyncSession, user_id: uuid.UUID) -> list[DeviceResponse]:
     result = await db.execute(
-        select(Device).options(selectinload(Device.agent)).order_by(Device.created_at.desc())
+        select(Device)
+        .options(selectinload(Device.agent))
+        .where(Device.user_id == user_id)
+        .order_by(Device.created_at.desc())
     )
     devices = result.scalars().all()
     return [_device_to_response(d) for d in devices]
 
 
-async def get_device(db: AsyncSession, device_id: uuid.UUID) -> DeviceResponse | None:
+async def get_device(db: AsyncSession, device_id: uuid.UUID, user_id: uuid.UUID) -> DeviceResponse | None:
     result = await db.execute(
-        select(Device).options(selectinload(Device.agent)).where(Device.id == device_id)
+        select(Device)
+        .options(selectinload(Device.agent))
+        .where(Device.id == device_id, Device.user_id == user_id)
     )
     device = result.scalar_one_or_none()
     return _device_to_response(device) if device else None
@@ -44,8 +49,10 @@ async def bind_device(db: AsyncSession, code: str, agent_id: uuid.UUID | None = 
     return None
 
 
-async def unbind_device(db: AsyncSession, device_id: uuid.UUID) -> bool:
-    result = await db.execute(select(Device).where(Device.id == device_id))
+async def unbind_device(db: AsyncSession, device_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    result = await db.execute(
+        select(Device).where(Device.id == device_id, Device.user_id == user_id)
+    )
     device = result.scalar_one_or_none()
     if not device:
         return False
@@ -54,8 +61,12 @@ async def unbind_device(db: AsyncSession, device_id: uuid.UUID) -> bool:
     return True
 
 
-async def assign_role(db: AsyncSession, device_id: uuid.UUID, agent_id: uuid.UUID | None) -> DeviceResponse | None:
-    result = await db.execute(select(Device).options(selectinload(Device.agent)).where(Device.id == device_id))
+async def assign_role(db: AsyncSession, device_id: uuid.UUID, agent_id: uuid.UUID | None, user_id: uuid.UUID) -> DeviceResponse | None:
+    result = await db.execute(
+        select(Device)
+        .options(selectinload(Device.agent))
+        .where(Device.id == device_id, Device.user_id == user_id)
+    )
     device = result.scalar_one_or_none()
     if not device:
         return None
@@ -77,8 +88,12 @@ async def assign_role(db: AsyncSession, device_id: uuid.UUID, agent_id: uuid.UUI
     return _device_to_response(device)
 
 
-async def trigger_ota(db: AsyncSession, device_id: uuid.UUID) -> DeviceResponse | None:
-    result = await db.execute(select(Device).options(selectinload(Device.agent)).where(Device.id == device_id))
+async def trigger_ota(db: AsyncSession, device_id: uuid.UUID, user_id: uuid.UUID) -> DeviceResponse | None:
+    result = await db.execute(
+        select(Device)
+        .options(selectinload(Device.agent))
+        .where(Device.id == device_id, Device.user_id == user_id)
+    )
     device = result.scalar_one_or_none()
     if not device:
         return None
@@ -101,6 +116,7 @@ def _device_to_response(device: Device) -> DeviceResponse:
         bound_agent_id=device.bound_agent_id,
         bound_agent_name=device.agent.name if device.agent else None,
         bind_code=device.bind_code,
+        user_id=device.user_id,
         created_at=device.created_at,
         updated_at=device.updated_at,
     )

@@ -11,8 +11,9 @@ from src.models.voice import Voice  # noqa: F401
 from src.models.knowledge import KnowledgeBase  # noqa: F401
 from src.models.conversation import Conversation, Message  # noqa: F401
 from src.models.voiceprint import VoiceprintSpeaker  # noqa: F401
+from src.models.user import User  # noqa: F401
 from src.middleware.error_handler import error_handler
-from src.routers import agents, devices, voices, knowledge, conversations, voiceprints, users, pipeline
+from src.routers import agents, devices, voices, knowledge, conversations, voiceprints, users, pipeline, auth
 from src.ws.voice import handle_voice
 
 
@@ -50,6 +51,7 @@ app.include_router(knowledge.router)
 app.include_router(conversations.router)
 app.include_router(voiceprints.router)
 app.include_router(users.router)
+app.include_router(auth.router)
 app.include_router(pipeline.router)
 
 
@@ -67,3 +69,25 @@ async def ws_device(ws: WebSocket, device_id: str):
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/api/pair-audio/{code}")
+async def pair_audio(code: str):
+    from fastapi.responses import Response
+    from src.ws.device import get_pair_audio
+    pcm = get_pair_audio(code)
+    if not pcm:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="配对码无效或已过期")
+    return Response(content=pcm, media_type="audio/pcm")
+
+
+@app.get("/api/pair-audio/{code}/{index}")
+async def pair_digit_audio(code: str, index: int):
+    from fastapi.responses import Response
+    from src.ws.device import get_pair_digit_audio
+    pcm = get_pair_digit_audio(code, index)
+    if not pcm:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="配对码无效或位数不存在")
+    return Response(content=pcm, media_type="audio/pcm")

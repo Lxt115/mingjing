@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     weather_api_key: str = "a861d0d5e7bf4ee1a83d9a9e4f96d4da"
     weather_default_location: str = "北京"
 
+    # ── JWT ──
+    jwt_secret: str = "mingjing-jwt-secret-change-in-production"
+
     # ── 服务 ──
     server_port: int = 8000
     cors_origins: str = "http://localhost:5173"

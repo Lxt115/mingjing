@@ -9,23 +9,28 @@ from src.models.knowledge import KnowledgeBase
 from src.schemas.agent import AgentCreate, AgentUpdate, AgentResponse, AgentTagSchema
 
 
-async def list_agents(db: AsyncSession) -> list[AgentResponse]:
+async def list_agents(db: AsyncSession, user_id: uuid.UUID) -> list[AgentResponse]:
     result = await db.execute(
-        select(Agent).options(selectinload(Agent.devices), selectinload(Agent.knowledges)).order_by(Agent.created_at.desc())
+        select(Agent)
+        .options(selectinload(Agent.devices), selectinload(Agent.knowledges))
+        .where(Agent.user_id == user_id)
+        .order_by(Agent.created_at.desc())
     )
     agents = result.scalars().all()
     return [_agent_to_response(a) for a in agents]
 
 
-async def get_agent(db: AsyncSession, agent_id: uuid.UUID) -> AgentResponse | None:
+async def get_agent(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) -> AgentResponse | None:
     result = await db.execute(
-        select(Agent).options(selectinload(Agent.devices), selectinload(Agent.knowledges)).where(Agent.id == agent_id)
+        select(Agent)
+        .options(selectinload(Agent.devices), selectinload(Agent.knowledges))
+        .where(Agent.id == agent_id, Agent.user_id == user_id)
     )
     agent = result.scalar_one_or_none()
     return _agent_to_response(agent) if agent else None
 
 
-async def create_agent(db: AsyncSession, data: AgentCreate) -> AgentResponse:
+async def create_agent(db: AsyncSession, data: AgentCreate, user_id: uuid.UUID) -> AgentResponse:
     agent = Agent(
         name=data.name,
         emoji=data.emoji,
@@ -33,13 +38,14 @@ async def create_agent(db: AsyncSession, data: AgentCreate) -> AgentResponse:
         system_prompt=data.system_prompt,
         voice_id=data.voice_id,
         tags=[t.model_dump() for t in data.tags],
+        user_id=user_id,
     )
     if data.knowledge_ids:
         kb_result = await db.execute(select(KnowledgeBase).where(KnowledgeBase.id.in_(data.knowledge_ids)))
         agent.knowledges = kb_result.scalars().all()
 
     if data.device_ids:
-        dev_result = await db.execute(select(Device).where(Device.id.in_(data.device_ids)))
+        dev_result = await db.execute(select(Device).where(Device.id.in_(data.device_ids), Device.user_id == user_id))
         for dev in dev_result.scalars().all():
             dev.bound_agent_id = agent.id
 
@@ -53,9 +59,11 @@ async def create_agent(db: AsyncSession, data: AgentCreate) -> AgentResponse:
     return _agent_to_response(result.scalar_one())
 
 
-async def update_agent(db: AsyncSession, agent_id: uuid.UUID, data: AgentUpdate) -> AgentResponse | None:
+async def update_agent(db: AsyncSession, agent_id: uuid.UUID, data: AgentUpdate, user_id: uuid.UUID) -> AgentResponse | None:
     result = await db.execute(
-        select(Agent).options(selectinload(Agent.devices), selectinload(Agent.knowledges)).where(Agent.id == agent_id)
+        select(Agent)
+        .options(selectinload(Agent.devices), selectinload(Agent.knowledges))
+        .where(Agent.id == agent_id, Agent.user_id == user_id)
     )
     agent = result.scalar_one_or_none()
     if not agent:
@@ -81,7 +89,7 @@ async def update_agent(db: AsyncSession, agent_id: uuid.UUID, data: AgentUpdate)
         for dev in old_devices:
             dev.bound_agent_id = None
         if device_ids:
-            dev_result = await db.execute(select(Device).where(Device.id.in_(device_ids)))
+            dev_result = await db.execute(select(Device).where(Device.id.in_(device_ids), Device.user_id == user_id))
             for dev in dev_result.scalars().all():
                 dev.bound_agent_id = agent_id
 
@@ -90,14 +98,44 @@ async def update_agent(db: AsyncSession, agent_id: uuid.UUID, data: AgentUpdate)
     return _agent_to_response(agent)
 
 
-async def delete_agent(db: AsyncSession, agent_id: uuid.UUID) -> bool:
-    result = await db.execute(select(Agent).where(Agent.id == agent_id))
+async def delete_agent(db: AsyncSession, agent_id: uuid.UUID, user_id: uuid.UUID) -> bool:
+    result = await db.execute(select(Agent).where(Agent.id == agent_id, Agent.user_id == user_id))
     agent = result.scalar_one_or_none()
     if not agent:
         return False
     await db.delete(agent)
     await db.commit()
     return True
+
+
+async def copy_system_agents_for_user(db: AsyncSession, user_id: uuid.UUID) -> int:
+    """将系统默认智能体复制给新注册用户。返回复制的数量。"""
+    result = await db.execute(
+        select(Agent).options(selectinload(Agent.knowledges)).where(Agent.user_id.is_(None))
+    )
+    system_agents = result.scalars().all()
+    count = 0
+    for sa in system_agents:
+        agent = Agent(
+            name=sa.name,
+            emoji=sa.emoji,
+            style=sa.style,
+            description=sa.description,
+            tags=sa.tags,
+            status=sa.status,
+            system_prompt=sa.system_prompt,
+            voice_id=sa.voice_id,
+            speed=sa.speed,
+            volume=sa.volume,
+            pitch=sa.pitch,
+            user_id=user_id,
+        )
+        if sa.knowledges:
+            agent.knowledges = list(sa.knowledges)
+        db.add(agent)
+        count += 1
+    await db.commit()
+    return count
 
 
 def _agent_to_response(agent: Agent) -> AgentResponse:

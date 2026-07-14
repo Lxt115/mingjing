@@ -21,6 +21,25 @@ function unwrap<T>(promise: Promise<{ data: ApiResponse<T> }>): Promise<ApiRespo
 
 export function createRealApiService(): ApiService {
   return {
+    auth: {
+      register: (username, password) =>
+        unwrap(
+          httpClient.post<ApiResponse<{ token: string; userId: string }>>('/auth/register', {
+            username,
+            password,
+          }),
+        ),
+      login: (username, password) =>
+        unwrap(
+          httpClient.post<ApiResponse<{ token: string; userId: string }>>('/auth/login', {
+            username,
+            password,
+          }),
+        ),
+      me: () =>
+        unwrap(httpClient.get<ApiResponse<{ userId: string; username: string }>>('/auth/me')),
+    },
+
     agents: {
       getList: () => unwrap(httpClient.get<ApiResponse<Agent[]>>('/agents')),
       getById: (id) => unwrap(httpClient.get<ApiResponse<Agent>>(`/agents/${id}`)),
@@ -39,6 +58,12 @@ export function createRealApiService(): ApiService {
         unwrap(httpClient.post<ApiResponse<Device>>(`/devices/${id}/upgrade`)),
       assignRole: (id, agentId) =>
         unwrap(httpClient.put<ApiResponse<Device>>(`/devices/${id}/role`, { agent_id: agentId })),
+      startProvisioning: () =>
+        unwrap(
+          httpClient.post<ApiResponse<{ sessionId: string; expiresInSeconds: number }>>(
+            '/devices/provisioning/start',
+          ),
+        ),
     },
 
     voices: {

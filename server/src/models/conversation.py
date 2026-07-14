@@ -17,8 +17,10 @@ class Conversation(Base, TimestampMixin):
     time: Mapped[str] = mapped_column("chat_time", String(10), default="")
     message_count: Mapped[int] = mapped_column(Integer, default=0)
     agent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("agents.id", ondelete="SET NULL"), nullable=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, default=None, index=True)
 
     messages = relationship("Message", back_populates="conversation", lazy="selectin", order_by="Message.created_at")
+    user = relationship("User", lazy="selectin")
 
 
 class Message(Base, TimestampMixin):

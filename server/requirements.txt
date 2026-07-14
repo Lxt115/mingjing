@@ -21,3 +21,5 @@ requests==2.32.3
 beautifulsoup4==4.13.3
 cnlunar==0.2.4
 zhdate==0.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4

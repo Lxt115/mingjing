@@ -2,6 +2,12 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/login',
+    name: 'Login',
+    component: () => import('@/views/LoginView.vue'),
+    meta: { title: '登录', guest: true },
+  },
+  {
     path: '/',
     redirect: '/agents',
   },
@@ -64,9 +70,21 @@ const router = createRouter({
 
 router.beforeEach((to, _from, next) => {
   const appTitle = import.meta.env.VITE_APP_TITLE ?? '明境 · AI 陪伴管理平台'
-  document.title = to.meta.title
-    ? `${to.meta.title} · ${appTitle}`
-    : appTitle
+  document.title = to.meta.title ? `${to.meta.title} · ${appTitle}` : appTitle
+
+  // 游客页面（登录/注册）直接放行
+  if (to.meta.guest) {
+    next()
+    return
+  }
+
+  // 检查登录状态
+  const token = localStorage.getItem('auth_token')
+  if (!token) {
+    next('/login')
+    return
+  }
+
   next()
 })
 

@@ -9,6 +9,7 @@ from src.models.device import Device               # noqa: F401
 from src.models.knowledge import KnowledgeBase     # noqa: F401
 from src.models.conversation import Conversation   # noqa: F401
 from src.models.voice import Voice
+from src.models.user import User                   # noqa: F401
 
 
 SEED_VOICES = [
@@ -57,6 +58,15 @@ async def seed():
             print("数据已存在，跳过种子数据")
             return
 
+        # 创建系统用户
+        result = await db.execute(select(User).where(User.username == "system"))
+        system_user = result.scalar_one_or_none()
+        if not system_user:
+            from src.services.auth import hash_password
+            system_user = User(username="system", password_hash=hash_password("system"))
+            db.add(system_user)
+            await db.flush()
+
         voices = []
         for v in SEED_VOICES:
             voice = Voice(**v)
@@ -65,6 +75,7 @@ async def seed():
 
         agents = []
         for i, a in enumerate(SEED_AGENTS):
+            # 系统智能体不属于任何普通用户（user_id=None），新用户注册时复制
             agent = Agent(
                 name=a["name"],
                 emoji=a["emoji"],
@@ -74,6 +85,7 @@ async def seed():
                 system_prompt=a["system_prompt"],
                 voice_id=voices[i % len(voices)].id,
                 status="online",
+                user_id=None,  # 系统预设智能体
             )
             db.add(agent)
             agents.append(agent)

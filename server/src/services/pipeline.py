@@ -57,6 +57,7 @@ async def _persist_conversation(
     agent: Agent,
     user_text: str,
     llm_text: str,
+    user_id: uuid.UUID | None = None,
 ) -> uuid.UUID:
     if conversation_id:
         conv_result = await db.execute(
@@ -83,6 +84,7 @@ async def _persist_conversation(
             date_label="今天",
             time=datetime.now(CHINA_TZ).strftime("%H:%M"),
             message_count=2,
+            user_id=user_id,
         )
         db.add(conv)
         await db.flush()
@@ -169,6 +171,7 @@ async def chat_pipeline(
     agent_id: uuid.UUID,
     conversation_id: uuid.UUID | None = None,
     client_ip: str = "",
+    user_id: uuid.UUID | None = None,
 ) -> dict:
     agent = await _load_agent(db, agent_id)
     if not agent:
@@ -181,7 +184,7 @@ async def chat_pipeline(
 
     audio_bytes, audio_error = await _synthesize_audio(agent, llm_text)
 
-    conv_id = await _persist_conversation(db, conversation_id, agent, text, llm_text)
+    conv_id = await _persist_conversation(db, conversation_id, agent, text, llm_text, user_id=user_id)
 
     # ── 异步保存记忆（不阻塞响应）──
     asyncio.create_task(_save_memory_bg(agent.id, text, llm_text))
@@ -206,13 +209,14 @@ async def speech_pipeline(
     agent_id: uuid.UUID,
     conversation_id: uuid.UUID | None = None,
     client_ip: str = "",
+    user_id: uuid.UUID | None = None,
 ) -> dict:
     stt = get_stt()
     text = await stt.transcribe(audio_bytes, audio_format)
     if text.startswith("["):
         return {"error": text}
 
-    result = await chat_pipeline(db, text, agent_id, conversation_id, client_ip)
+    result = await chat_pipeline(db, text, agent_id, conversation_id, client_ip, user_id=user_id)
     result["transcribed_text"] = text
     return result
 
@@ -224,6 +228,7 @@ async def speech_pipeline_stream(
     agent_id: uuid.UUID,
     conversation_id: uuid.UUID | None = None,
     client_ip: str = "",
+    user_id: uuid.UUID | None = None,
 ):
     stt = get_stt()
     text = await stt.transcribe(audio_bytes, audio_format)
@@ -290,7 +295,7 @@ async def speech_pipeline_stream(
         audio_error = str(e)
         print(f"[TTS] 流式合成失败: {audio_error}")
 
-    conv_id = await _persist_conversation(db, conversation_id, agent, text, final_answer)
+    conv_id = await _persist_conversation(db, conversation_id, agent, text, final_answer, user_id=user_id)
 
     # ── 异步保存记忆（不阻塞响应）──
     asyncio.create_task(_save_memory_bg(agent.id, text, final_answer))
@@ -314,6 +319,7 @@ async def chat_pipeline_stream(
     agent_id: uuid.UUID,
     conversation_id: uuid.UUID | None = None,
     client_ip: str = "",
+    user_id: uuid.UUID | None = None,
 ):
     agent = await _load_agent(db, agent_id)
     if not agent:
@@ -362,7 +368,7 @@ async def chat_pipeline_stream(
         audio_error = str(e)
         print(f"[TTS] chat流式合成失败: {audio_error}")
 
-    conv_id = await _persist_conversation(db, conversation_id, agent, text, final_answer)
+    conv_id = await _persist_conversation(db, conversation_id, agent, text, final_answer, user_id=user_id)
 
     # ── 异步保存记忆（不阻塞响应）──
     asyncio.create_task(_save_memory_bg(agent.id, text, final_answer))

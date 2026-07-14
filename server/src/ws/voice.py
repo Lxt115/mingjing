@@ -7,6 +7,8 @@ from fastapi import WebSocket, WebSocketDisconnect
 from src.ws.manager import manager
 from src.database import async_session_factory
 from src.services import pipeline
+from src.models.agent import Agent
+from sqlalchemy import select
 
 # 与固件 OPUS_SAMPLE_RATE / OPUS_FRAME_DURATION_MS 保持一致
 OPUS_SAMPLE_RATE = 16000
@@ -118,11 +120,16 @@ async def handle_voice(ws: WebSocket, agent_id: str):
                     pcm_buffer = bytearray()
 
                     async with async_session_factory() as db:
+                        # 通过 agent 获取 user_id
+                        agent_result = await db.execute(select(Agent).where(Agent.id == agent_uuid))
+                        agent = agent_result.scalar_one_or_none()
+                        pipeline_user_id = agent.user_id if agent else None
+
                         # 通过 nginx 代理时，从 X-Real-IP 获取真实客户端 IP
                         real_ip = ws.headers.get("x-real-ip") or ws.client.host
                         async for event in pipeline.speech_pipeline_stream(
                             db, audio_bytes, "pcm", agent_uuid, conn.conversation_id,
-                            client_ip=real_ip,
+                            client_ip=real_ip, user_id=pipeline_user_id,
                         ):
                             event_type = event["type"]
 

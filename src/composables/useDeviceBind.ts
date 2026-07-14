@@ -10,8 +10,8 @@ export function useDeviceBind() {
 
   async function submitBind(agentId?: string) {
     const code = deviceCode.value.trim()
-    if (code.length !== 6) {
-      ui.showToast('❌ 请输入6位验证码', 'error')
+    if (code.length !== 4) {
+      ui.showToast('❌ 请输入 4 位配对码', 'error')
       return false
     }
     isSubmitting.value = true
@@ -22,24 +22,16 @@ export function useDeviceBind() {
       deviceCode.value = ''
       return true
     } catch (e) {
-      ui.showToast(
-        e instanceof Error ? e.message : '❌ 设备绑定失败',
-        'error',
-      )
+      ui.showToast(e instanceof Error ? e.message : '❌ 设备绑定失败', 'error')
       return false
     } finally {
       isSubmitting.value = false
     }
   }
 
-  function resetCode() {
-    deviceCode.value = ''
-  }
-
   return {
     deviceCode,
     isSubmitting,
     submitBind,
-    resetCode,
   }
 }

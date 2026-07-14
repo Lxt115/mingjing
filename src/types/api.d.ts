@@ -34,6 +34,7 @@ export interface DevicesApi {
   unbind(id: string): Promise<ApiResponse<null>>
   upgradeFirmware(id: string): Promise<ApiResponse<Device>>
   assignRole(id: string, agentId: string | null): Promise<ApiResponse<Device>>
+  startProvisioning(): Promise<ApiResponse<{ sessionId: string; expiresInSeconds: number }>>
 }
 
 export interface VoicesApi {
@@ -73,7 +74,17 @@ export interface UserApi {
   updateNotification(enabled: boolean): Promise<ApiResponse<null>>
 }
 
+export interface AuthApi {
+  register(
+    username: string,
+    password: string,
+  ): Promise<ApiResponse<{ token: string; userId: string }>>
+  login(username: string, password: string): Promise<ApiResponse<{ token: string; userId: string }>>
+  me(): Promise<ApiResponse<{ userId: string; username: string }>>
+}
+
 export interface ApiService {
+  auth: AuthApi
   agents: AgentsApi
   devices: DevicesApi
   voices: VoicesApi

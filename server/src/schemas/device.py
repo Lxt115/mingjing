@@ -18,6 +18,7 @@ class DeviceResponse(CamelModel):
     bound_agent_id: UUID | None
     bound_agent_name: str | None
     bind_code: str | None = None
+    user_id: UUID | None = None
     created_at: datetime
     updated_at: datetime
 

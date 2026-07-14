@@ -51,6 +51,12 @@ function createHttpClient(): AxiosInstance {
           new Error(typeof body?.detail === 'string' ? body.detail : '资源不存在'),
         )
       }
+      if (error.response?.status === 409) {
+        const body = error.response.data as ErrorResponseBody | undefined
+        return Promise.reject(
+          new Error(typeof body?.detail === 'string' ? body.detail : '请求冲突'),
+        )
+      }
       if (error.response?.status === 422) {
         const body = error.response.data as ErrorResponseBody | undefined
         const detail = body?.detail

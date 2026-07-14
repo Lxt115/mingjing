@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUiStore, useUserStore } from '@/store'
 import { useMediaQuery } from '@/composables'
@@ -8,6 +9,15 @@ const ui = useUiStore()
 const user = useUserStore()
 const router = useRouter()
 const { isMobile } = useMediaQuery()
+
+onMounted(() => {
+  user.fetchProfile()
+})
+
+function logout() {
+  user.logout()
+  router.push('/login')
+}
 
 function navigateTo(path: string) {
   router.push(path)
@@ -37,10 +47,10 @@ function navigateTo(path: string) {
           {{ user.profile.avatarEmoji }}
         </div>
         <div class="text-[22px] font-black text-white mb-1 relative z-[1]">
-          {{ user.profile.name }}
+          {{ user.username || user.profile.name }}
         </div>
         <div class="text-xs text-white/60 relative z-[1] mb-5">
-          ID: {{ user.profile.userId }} · v{{ user.profile.version }}
+          ID: {{ user.userId || user.profile.userId }} · v{{ user.profile.version }}
         </div>
 
         <div class="grid grid-cols-3 gap-3 relative z-[1]">
@@ -122,6 +132,14 @@ function navigateTo(path: string) {
             <span class="text-[var(--text3)] text-base">›</span>
           </div>
         </div>
+
+        <!-- Logout -->
+        <button
+          class="w-full mt-5 py-3 rounded-[var(--radius-md)] bg-[var(--surface)] border border-[var(--border)] text-[var(--coral)] text-sm font-bold cursor-pointer transition-all duration-200 hover:bg-[#fff0f0]"
+          @click="logout()"
+        >
+          退出登录
+        </button>
       </div>
     </div>
   </div>
@@ -141,9 +159,9 @@ function navigateTo(path: string) {
           {{ user.profile.avatarEmoji }}
         </div>
         <div>
-          <div class="text-xl font-black text-white">{{ user.profile.name }}</div>
+          <div class="text-xl font-black text-white">{{ user.username || user.profile.name }}</div>
           <div class="text-xs text-white/70 mt-0.5 font-semibold">
-            ID: {{ user.profile.userId }}
+            ID: {{ user.userId || user.profile.userId }}
           </div>
         </div>
       </div>
@@ -349,6 +367,13 @@ function navigateTo(path: string) {
       </div>
 
       <div class="h-6 shrink-0"></div>
+
+      <button
+        class="mx-4 mb-6 py-3 rounded-[var(--radius-md)] bg-[var(--surface)] border border-[var(--border)] text-[var(--coral)] text-sm font-bold cursor-pointer transition-all duration-200 active:bg-[#fff0f0]"
+        @click="logout()"
+      >
+        退出登录
+      </button>
     </div>
   </div>
 </template>

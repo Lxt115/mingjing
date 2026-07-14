@@ -17,5 +17,7 @@ class Device(Base, TimestampMixin):
     auto_upgrade: Mapped[bool] = mapped_column(Boolean, default=False)
     bound_agent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("agents.id", ondelete="SET NULL"), nullable=True)
     bind_code: Mapped[str | None] = mapped_column(String(6), nullable=True, default=None)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, default=None)
 
     agent = relationship("Agent", back_populates="devices", lazy="selectin")
+    user = relationship("User", lazy="selectin")

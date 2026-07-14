@@ -8,9 +8,11 @@ from src.models.conversation import Conversation, Message
 from src.schemas.conversation import ConversationListResponse, ConversationResponse, MessageResponse
 
 
-async def list_conversations(db: AsyncSession, filter_str: str | None = None) -> list[ConversationListResponse]:
+async def list_conversations(db: AsyncSession, user_id: uuid.UUID, filter_str: str | None = None) -> list[ConversationListResponse]:
     result = await db.execute(
-        select(Conversation).order_by(Conversation.created_at.desc())
+        select(Conversation)
+        .where(Conversation.user_id == user_id)
+        .order_by(Conversation.created_at.desc())
     )
     conversations = result.scalars().all()
     items = [_to_list_item(c) for c in conversations]
@@ -19,11 +21,11 @@ async def list_conversations(db: AsyncSession, filter_str: str | None = None) ->
     return items
 
 
-async def get_conversation(db: AsyncSession, conv_id: uuid.UUID) -> ConversationResponse | None:
+async def get_conversation(db: AsyncSession, conv_id: uuid.UUID, user_id: uuid.UUID) -> ConversationResponse | None:
     result = await db.execute(
         select(Conversation)
         .options(selectinload(Conversation.messages))
-        .where(Conversation.id == conv_id)
+        .where(Conversation.id == conv_id, Conversation.user_id == user_id)
     )
     conv = result.scalar_one_or_none()
     if not conv:
@@ -31,11 +33,11 @@ async def get_conversation(db: AsyncSession, conv_id: uuid.UUID) -> Conversation
     return _to_detail_response(conv)
 
 
-async def get_messages(db: AsyncSession, conv_id: uuid.UUID) -> list[MessageResponse] | None:
+async def get_messages(db: AsyncSession, conv_id: uuid.UUID, user_id: uuid.UUID) -> list[MessageResponse] | None:
     result = await db.execute(
         select(Conversation)
         .options(selectinload(Conversation.messages))
-        .where(Conversation.id == conv_id)
+        .where(Conversation.id == conv_id, Conversation.user_id == user_id)
     )
     conv = result.scalar_one_or_none()
     if not conv:
