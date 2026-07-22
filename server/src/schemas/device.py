@@ -24,7 +24,7 @@ class DeviceResponse(CamelModel):
 
 
 class DeviceBindRequest(CamelModel):
-    code: str = Field(..., min_length=6, max_length=17)
+    code: str = Field(..., min_length=4, max_length=4)
     agent_id: UUID | None = None
 
 
