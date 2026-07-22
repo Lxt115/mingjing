@@ -56,6 +56,7 @@ def _clean_expired_codes():
 
 
 async def handle_device(ws: WebSocket, device_id: str):
+    print(f"[device] >>> handle_device called, device_id={device_id}", flush=True)
     t0 = time.time()
     try:
         device_uuid = uuid_mod.UUID(device_id)
@@ -63,43 +64,50 @@ async def handle_device(ws: WebSocket, device_id: str):
         await ws.close(code=1008, reason="invalid device_id")
         return
 
+    print(f"[device] parsing UUID took {time.time() - t0:.3f}s", flush=True)
     t1 = time.time()
-    async with async_session_factory() as db:
-        result = await db.execute(
-            select(Device).options(selectinload(Device.agent)).where(Device.id == device_uuid)
-        )
-        device = result.scalar_one_or_none()
-        print(f"[device] DB lookup took {time.time() - t1:.2f}s, device={'found' if device else 'new'}")
-        if not device:
-            device = Device(
-                id=device_uuid,
-                name=f"设备-{str(device_uuid)[-4:]}",
-                mac=str(device_uuid)[:17],
-                status="pending",
-                bind_code=None,
+    try:
+        async with async_session_factory() as db:
+            print(f"[device] DB session acquired at {time.time() - t0:.3f}s", flush=True)
+            result = await db.execute(
+                select(Device).options(selectinload(Device.agent)).where(Device.id == device_uuid)
             )
-            db.add(device)
-            await db.commit()
-            await db.refresh(device)
-            agent_id = None
-        else:
-            agent_id = device.bound_agent_id
-            device.status = "online"
-            await db.commit()
+            device = result.scalar_one_or_none()
+            print(f"[device] DB lookup took {time.time() - t1:.2f}s, device={'found' if device else 'new'}", flush=True)
+            if not device:
+                device = Device(
+                    id=device_uuid,
+                    name=f"设备-{str(device_uuid)[-4:]}",
+                    mac=str(device_uuid)[:17],
+                    status="pending",
+                    bind_code=None,
+                )
+                db.add(device)
+                await db.commit()
+                await db.refresh(device)
+                agent_id = None
+            else:
+                agent_id = device.bound_agent_id
+                device.status = "online"
+                await db.commit()
+    except Exception as e:
+        print(f"[device] ERROR in DB: {e}", flush=True)
+        await ws.close(code=1011, reason="internal error")
+        return
 
     if not agent_id:
         # 设备未绑定：生成配对码（音频由设备固件内置 PCM 播放）
         pair_code = generate_pair_code(device_uuid)
 
         conn = await manager.connect(ws, None, device_uuid)
-        print(f"[device] WS accepted, sending pair_code, total elapsed {time.time() - t0:.2f}s")
+        print(f"[device] WS accepted, sending pair_code, total elapsed {time.time() - t0:.2f}s", flush=True)
 
         await manager.send_json(ws, {
             "type": "pair_code",
             "code": pair_code,
         })
-        print(f"[device] pair_code sent at {time.time() - t0:.2f}s")
-        print(f"[device] new device {str(device_uuid)[-8:]}, pair_code={pair_code}")
+        print(f"[device] pair_code sent at {time.time() - t0:.2f}s", flush=True)
+        print(f"[device] new device {str(device_uuid)[-8:]}, pair_code={pair_code}", flush=True)
 
         # 等第一条 device_info（兼容旧固件）
         try:
