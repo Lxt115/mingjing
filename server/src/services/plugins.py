@@ -69,9 +69,17 @@ def extract_tool_calls(text: str) -> list[tuple[str, str]]:
     return TOOL_TAG_RE.findall(text)
 
 
+# 清理格式不正确的工具标签（如 <TOOL:search</TOOL:search>）
+_TOOL_CLEANUP_RE = re.compile(r"<TOOL:\w+[^>]*>.*?</TOOL:\w+>", re.DOTALL)
+_TOOL_CLEANUP_PARTIAL_RE = re.compile(r"<TOOL:\w+[^>]*/?>", re.DOTALL)
+
+
 def remove_tool_tags(text: str) -> str:
-    """移除文本中的工具调用标签。"""
-    return TOOL_TAG_RE.sub("", text).strip()
+    """移除文本中的工具调用标签（包括格式不正确的）。"""
+    text = TOOL_TAG_RE.sub("", text)
+    text = _TOOL_CLEANUP_RE.sub("", text)
+    text = _TOOL_CLEANUP_PARTIAL_RE.sub("", text)
+    return text.strip()
 
 
 def build_tools_prompt() -> str:

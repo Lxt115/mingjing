@@ -443,7 +443,7 @@ async def _handle_tool_calls(text: str, messages: list[dict], full_text: str,
 
     # 无需工具或搜索，去除标签后返回
     clean_text = remove_tool_tags(text)
-    clean_text = SEARCH_TAG_CLEAN_RE.sub("", clean_text) if search_depth > 0 or tool_depth > 0 else text
+    clean_text = SEARCH_TAG_CLEAN_RE.sub("", clean_text)
     full_text += clean_text
     return messages, full_text, search_depth, tool_depth, False
 
