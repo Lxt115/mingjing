@@ -12,7 +12,7 @@ from src.models.device import Device
 from src.models.user import User
 
 # ── 配对码存储（内存中）──
-# { code: {"device_uuid": uuid, "digit_audios": [bytes], "created_at": datetime} }
+# { code: {"device_uuid": uuid, "created_at": datetime} }
 _pair_codes: dict[str, dict] = {}
 _PAIR_CODE_TIMEOUT_MINUTES = 5
 
@@ -38,16 +38,6 @@ def get_device_by_code(code: str) -> uuid_mod.UUID | None:
     return entry["device_uuid"] if entry else None
 
 
-def get_pair_audio(code: str) -> bytes | None:
-    """获取配对码对应的完整音频数据。"""
-    _clean_expired_codes()
-    entry = _pair_codes.get(code.strip())
-    if not entry:
-        return None
-    audios = entry.get("digit_audios", [])
-    return b"".join(audios) if audios else None
-
-
 def consume_pair_code(code: str) -> uuid_mod.UUID | None:
     """绑定用：获取并删除配对码条目。"""
     device_uuid = get_device_by_code(code)
@@ -62,45 +52,6 @@ def _clean_expired_codes():
                if now - e["created_at"] > timedelta(minutes=_PAIR_CODE_TIMEOUT_MINUTES)]
     for c in expired:
         del _pair_codes[c]
-
-
-def get_pair_digit_audio(code: str, index: int) -> bytes | None:
-    """获取配对码第 index 位数字的音频。"""
-    entry = _pair_codes.get(code.strip())
-    if not entry:
-        return None
-    digit_audios = entry.get("digit_audios")
-    if not digit_audios or index < 0 or index >= len(digit_audios):
-        return None
-    return digit_audios[index]
-
-
-async def _generate_digit_audio(digit: str) -> bytes:
-    """为单个数字生成 TTS 音频 (raw PCM 16kHz 16-bit mono)。"""
-    text = digit  # 只念数字本身
-    try:
-        from src.providers.factory import get_tts
-        tts = get_tts()
-        pcm_chunks = []
-        async for chunk in tts.synthesize_streaming(
-            text=text,
-            voice_name="zh_female_vv_uranus_bigtts",
-            speed=1.0,
-        ):
-            pcm_chunks.append(chunk)
-        return b"".join(pcm_chunks)
-    except Exception as e:
-        print(f"[pair_code] digit TTS failed: {e}")
-        return b""
-
-
-async def _generate_pair_audio(code: str) -> bytes:
-    """调用 TTS 生成配对码全部数字语音列表。"""
-    digit_audios = []
-    for ch in code:
-        pcm = await _generate_digit_audio(ch)
-        digit_audios.append(pcm)
-    return digit_audios
 
 
 async def handle_device(ws: WebSocket, device_id: str):
@@ -133,23 +84,16 @@ async def handle_device(ws: WebSocket, device_id: str):
             await db.commit()
 
     if not agent_id:
-        # 设备未绑定：生成配对码 + TTS 语音
+        # 设备未绑定：生成配对码（音频由设备固件内置 PCM 播放）
         pair_code = generate_pair_code(device_uuid)
-        audio_pcm = await _generate_pair_audio(pair_code)
-
-        # 存储每位数音频到配对码条目（供 /api/pair-audio/{code}/{index} 下载）
-        entry = _pair_codes.get(pair_code)
-        if entry:
-            entry["digit_audios"] = audio_pcm  # list of 4 PCM byte chunks
 
         conn = await manager.connect(ws, None, device_uuid)
 
-        # 只发送配对码（音频通过 HTTP 下载）
         await manager.send_json(ws, {
             "type": "pair_code",
             "code": pair_code,
         })
-        print(f"[device] new device {str(device_uuid)[-8:]}, pair_code={pair_code}, audio={len(audio_pcm)} bytes")
+        print(f"[device] new device {str(device_uuid)[-8:]}, pair_code={pair_code}")
 
         # 等第一条 device_info（兼容旧固件）
         try:

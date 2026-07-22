@@ -69,25 +69,3 @@ async def ws_device(ws: WebSocket, device_id: str):
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
-
-
-@app.get("/api/pair-audio/{code}")
-async def pair_audio(code: str):
-    from fastapi.responses import Response
-    from src.ws.device import get_pair_audio
-    pcm = get_pair_audio(code)
-    if not pcm:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="配对码无效或已过期")
-    return Response(content=pcm, media_type="audio/pcm")
-
-
-@app.get("/api/pair-audio/{code}/{index}")
-async def pair_digit_audio(code: str, index: int):
-    from fastapi.responses import Response
-    from src.ws.device import get_pair_digit_audio
-    pcm = get_pair_digit_audio(code, index)
-    if not pcm:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail="配对码无效或位数不存在")
-    return Response(content=pcm, media_type="audio/pcm")
