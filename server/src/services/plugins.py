@@ -140,3 +140,14 @@ async def handle_get_lunar(date: str = "", query: str = "", params_text: str = "
     query = query or params_text or None
     lunar_text = get_lunar(date_str=date, query=query)
     return ActionResponse(result=lunar_text, action=Action.REQLLM)
+
+
+@register(name="search", description="联网搜索。参数: query（搜索关键词，必填）", action=Action.REQLLM)
+async def handle_search(query: str = "", params_text: str = "", **kwargs) -> ActionResponse:
+    from src.services.web_search import search
+
+    query = query or params_text
+    if not query:
+        return ActionResponse(result="请提供搜索关键词", action=Action.RESPONSE)
+    result = search(query)
+    return ActionResponse(result=result, action=Action.REQLLM)
