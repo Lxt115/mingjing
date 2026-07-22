@@ -72,7 +72,7 @@ async def bind_device(
     await db.commit()
     await db.refresh(device)
 
-    /* 通过设备 WS 通知固件绑定成功，停止播放配对码 */
+    # 通过设备 WS 通知固件绑定成功，停止播放配对码
     from src.ws.manager import manager
     conn = manager.get_by_device(str(device_uuid))
     if conn:
