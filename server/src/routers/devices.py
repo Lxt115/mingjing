@@ -72,6 +72,15 @@ async def bind_device(
     await db.commit()
     await db.refresh(device)
 
+    /* 通过设备 WS 通知固件绑定成功，停止播放配对码 */
+    from src.ws.manager import manager
+    conn = manager.get_by_device(str(device_uuid))
+    if conn:
+        await manager.send_json(conn.websocket, {
+            "type": "bound",
+            "agent_id": str(device.bound_agent_id) if device.bound_agent_id else None,
+        })
+
     from src.services.devices import _device_to_response
     return ApiResponse(data=_device_to_response(device), timestamp=time.time())
 
