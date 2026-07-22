@@ -75,11 +75,15 @@ async def bind_device(
     # 通过设备 WS 通知固件绑定成功，停止播放配对码
     from src.ws.manager import manager
     conn = manager.get_by_device(str(device_uuid))
+    print(f"[bind] device={str(device_uuid)[-8:]} conn_found={conn is not None}", flush=True)
     if conn:
         await manager.send_json(conn.websocket, {
             "type": "bound",
             "agent_id": str(device.bound_agent_id) if device.bound_agent_id else None,
         })
+        print(f"[bind] bound message sent to device", flush=True)
+    else:
+        print(f"[bind] device WS not found, cannot send bound message", flush=True)
 
     from src.services.devices import _device_to_response
     return ApiResponse(data=_device_to_response(device), timestamp=time.time())
