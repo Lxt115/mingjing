@@ -12,6 +12,8 @@ interface ErrorResponseBody {
 }
 
 function createHttpClient(): AxiosInstance {
+  let isRedirecting = false
+
   const instance = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api',
     timeout: 15000,
@@ -38,8 +40,13 @@ function createHttpClient(): AxiosInstance {
     },
     (error: AxiosError) => {
       if (error.response?.status === 401) {
-        localStorage.removeItem('auth_token')
-        window.location.href = '/login'
+        if (!isRedirecting) {
+          isRedirecting = true
+          localStorage.removeItem('auth_token')
+          localStorage.removeItem('user_id')
+          localStorage.removeItem('username')
+          window.location.replace('/login')
+        }
         return Promise.reject(error)
       }
       if (error.response?.status === 403) {
