@@ -1,6 +1,7 @@
 import json
 import uuid as uuid_mod
 import random
+import time
 from datetime import datetime, timedelta, timezone
 from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy import select
@@ -55,17 +56,20 @@ def _clean_expired_codes():
 
 
 async def handle_device(ws: WebSocket, device_id: str):
+    t0 = time.time()
     try:
         device_uuid = uuid_mod.UUID(device_id)
     except ValueError:
         await ws.close(code=1008, reason="invalid device_id")
         return
 
+    t1 = time.time()
     async with async_session_factory() as db:
         result = await db.execute(
             select(Device).options(selectinload(Device.agent)).where(Device.id == device_uuid)
         )
         device = result.scalar_one_or_none()
+        print(f"[device] DB lookup took {time.time() - t1:.2f}s, device={'found' if device else 'new'}")
         if not device:
             device = Device(
                 id=device_uuid,
@@ -88,11 +92,13 @@ async def handle_device(ws: WebSocket, device_id: str):
         pair_code = generate_pair_code(device_uuid)
 
         conn = await manager.connect(ws, None, device_uuid)
+        print(f"[device] WS accepted, sending pair_code, total elapsed {time.time() - t0:.2f}s")
 
         await manager.send_json(ws, {
             "type": "pair_code",
             "code": pair_code,
         })
+        print(f"[device] pair_code sent at {time.time() - t0:.2f}s")
         print(f"[device] new device {str(device_uuid)[-8:]}, pair_code={pair_code}")
 
         # 等第一条 device_info（兼容旧固件）
