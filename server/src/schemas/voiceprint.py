@@ -8,9 +8,11 @@ from src.schemas.common import CamelModel
 class VoiceprintSpeakerResponse(CamelModel):
     id: UUID
     name: str
+    description: str = ""
     registered_at: str
     sample_count: int
 
 
 class VoiceprintRegisterRequest(CamelModel):
     name: str = Field(..., min_length=1, max_length=50)
+    description: str = Field(default="", max_length=200)

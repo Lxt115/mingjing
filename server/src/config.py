@@ -61,6 +61,13 @@ class Settings(BaseSettings):
     # ── JWT ──
     jwt_secret: str = "mingjing-jwt-secret-change-in-production"
 
+    # ── 声纹识别 ──
+    # voiceprint-api 地址（从 health 接口获取，包含 ?key= 参数）
+    # 部署文档: https://github.com/xinnan-tech/voiceprint-api
+    voiceprint_url: str = ""
+    # 声纹识别相似度阈值（0~1），低于此值视为"未知说话人"
+    voiceprint_similarity_threshold: float = 0.4
+
     # ── 服务 ──
     server_port: int = 8000
     cors_origins: str = "http://localhost:5173"

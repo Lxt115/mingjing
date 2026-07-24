@@ -19,7 +19,7 @@ async def list_speakers(db: AsyncSession = Depends(get_db)):
 
 @router.post("/register", status_code=201)
 async def register_speaker(body: VoiceprintRegisterRequest, db: AsyncSession = Depends(get_db)):
-    speaker = await services.voiceprints.register_speaker(db, body.name)
+    speaker = await services.voiceprints.register_speaker(db, body.name, body.description)
     return ApiResponse(data=speaker, timestamp=time.time())
 
 

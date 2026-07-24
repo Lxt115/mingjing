@@ -1,7 +1,10 @@
 import uuid
 import re
 import base64
+import json
 import asyncio
+import io
+import wave
 from datetime import datetime, timezone, timedelta
 
 from sqlalchemy import select
@@ -23,6 +26,52 @@ MAX_HISTORY_MESSAGES = 20
 
 # 预编译正则，避免每次 _handle_tool_calls 都重新编译
 SEARCH_TAG_CLEAN_RE = re.compile(r"<SEARCH>.*?</SEARCH>", re.DOTALL)
+
+
+def _pcm_to_wav(pcm_data: bytes, sample_rate: int = 16000, channels: int = 1, bits: int = 16) -> bytes:
+    """在内存中将 PCM 数据转换为 WAV 格式。"""
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as wf:
+        wf.setnchannels(channels)
+        wf.setsampwidth(bits // 8)
+        wf.setframerate(sample_rate)
+        wf.writeframes(pcm_data)
+    return buf.getvalue()
+
+
+async def _run_voiceprint(db: AsyncSession, audio_bytes: bytes) -> tuple[str | None, dict[str, dict[str, str]]]:
+    """运行声纹识别，返回 (speaker_name, speaker_map)。
+    
+    如果未配置声纹或识别失败，返回 (None, {})。
+    """
+    if not settings.voiceprint_url:
+        return None, {}
+
+    from src.providers.voiceprint import VoiceprintProvider
+    from src.services import voiceprints as vp_services
+
+    speaker_map = await vp_services.get_speaker_map(db)
+    if not speaker_map:
+        return None, {}
+
+    provider = VoiceprintProvider(
+        url=settings.voiceprint_url,
+        speaker_ids=list(speaker_map.keys()),
+        similarity_threshold=settings.voiceprint_similarity_threshold,
+    )
+
+    if not provider.enabled:
+        return None, speaker_map
+
+    try:
+        wav_data = _pcm_to_wav(audio_bytes)
+        speaker_id, score = await provider.identify(wav_data)
+        if speaker_id and speaker_id in speaker_map:
+            return speaker_map[speaker_id]["name"], speaker_map
+        return None, speaker_map
+    except Exception as e:
+        print(f"[voiceprint] 识别异常: {e}")
+        return None, speaker_map
 
 
 async def _load_agent(db: AsyncSession, agent_id: uuid.UUID) -> Agent | None:
@@ -102,6 +151,7 @@ async def _build_llm_messages(
     user_text: str,
     conversation_id: uuid.UUID | None,
     client_ip: str = "",
+    speaker_map: dict[str, dict[str, str]] | None = None,
 ) -> tuple[str, list[dict]]:
     history = await _load_history(db, conversation_id) if conversation_id else []
 
@@ -140,6 +190,19 @@ async def _build_llm_messages(
     if tools_prompt:
         system_prompt = system_prompt + "\n\n" + tools_prompt
 
+    # ── 注入说话人信息（声纹识别）──
+    if speaker_map:
+        speaker_info_lines = []
+        for _sid, info in speaker_map.items():
+            name = info.get("name", "")
+            desc = info.get("description", "")
+            if desc:
+                speaker_info_lines.append(f"- {name}：{desc}")
+            else:
+                speaker_info_lines.append(f"- {name}")
+        if speaker_info_lines:
+            system_prompt = system_prompt + "\n<speakers_info>\n" + "\n".join(speaker_info_lines) + "\n</speakers_info>"
+
     messages = history + [{"role": "user", "content": user_text}]
 
     return system_prompt, messages
@@ -172,12 +235,15 @@ async def chat_pipeline(
     conversation_id: uuid.UUID | None = None,
     client_ip: str = "",
     user_id: uuid.UUID | None = None,
+    speaker_map: dict[str, dict[str, str]] | None = None,
 ) -> dict:
     agent = await _load_agent(db, agent_id)
     if not agent:
         return {"error": "角色不存在"}
 
-    system_prompt, messages = await _build_llm_messages(db, agent, text, conversation_id, client_ip)
+    system_prompt, messages = await _build_llm_messages(
+        db, agent, text, conversation_id, client_ip, speaker_map=speaker_map,
+    )
 
     llm = get_llm()
     llm_text = await llm.chat(messages=messages, system_prompt=system_prompt)
@@ -211,12 +277,24 @@ async def speech_pipeline(
     client_ip: str = "",
     user_id: uuid.UUID | None = None,
 ) -> dict:
+    # ── 并行执行 STT 和声纹识别 ──
     stt = get_stt()
-    text = await stt.transcribe(audio_bytes, audio_format)
+    stt_task = asyncio.create_task(stt.transcribe(audio_bytes, audio_format))
+    voiceprint_task = asyncio.create_task(_run_voiceprint(db, audio_bytes))
+
+    text = await stt_task
+    if isinstance(text, Exception):
+        return {"error": f"STT 异常: {text}"}
     if text.startswith("["):
         return {"error": text}
 
-    result = await chat_pipeline(db, text, agent_id, conversation_id, client_ip, user_id=user_id)
+    speaker_name, speaker_map = await voiceprint_task
+
+    if speaker_name:
+        print(f"[voiceprint] 识别到说话人: {speaker_name}")
+        text = json.dumps({"speaker": speaker_name, "content": text}, ensure_ascii=False)
+
+    result = await chat_pipeline(db, text, agent_id, conversation_id, client_ip, user_id=user_id, speaker_map=speaker_map)
     result["transcribed_text"] = text
     return result
 
@@ -230,11 +308,25 @@ async def speech_pipeline_stream(
     client_ip: str = "",
     user_id: uuid.UUID | None = None,
 ):
+    # ── 并行执行 STT 和声纹识别 ──
     stt = get_stt()
-    text = await stt.transcribe(audio_bytes, audio_format)
+    stt_task = asyncio.create_task(stt.transcribe(audio_bytes, audio_format))
+    voiceprint_task = asyncio.create_task(_run_voiceprint(db, audio_bytes))
+
+    text = await stt_task
+    if isinstance(text, Exception):
+        yield {"type": "error", "message": f"STT 异常: {text}"}
+        return
     if text.startswith("["):
         yield {"type": "error", "message": text}
         return
+
+    speaker_name, speaker_map = await voiceprint_task
+
+    # ── 如果识别到说话人，将文本包装为 JSON 格式 ──
+    if speaker_name:
+        print(f"[voiceprint] 识别到说话人: {speaker_name}")
+        text = json.dumps({"speaker": speaker_name, "content": text}, ensure_ascii=False)
 
     yield {"type": "transcript", "content": text}
 
@@ -243,7 +335,9 @@ async def speech_pipeline_stream(
         yield {"type": "error", "message": "角色不存在"}
         return
 
-    system_prompt, messages = await _build_llm_messages(db, agent, text, conversation_id, client_ip)
+    system_prompt, messages = await _build_llm_messages(
+        db, agent, text, conversation_id, client_ip, speaker_map=speaker_map,
+    )
 
     llm = get_llm()
 
