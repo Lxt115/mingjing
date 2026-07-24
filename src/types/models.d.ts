@@ -97,12 +97,9 @@ export interface KnowledgeDetail extends KnowledgeBase {
 export interface VoiceprintSpeaker {
   id: string
   name: string
+  description: string
   registeredAt: string
   sampleCount: number
-  gradient: string
-  emoji: string
-  verified: boolean
-  description: string
 }
 
 export interface ConversationListItem {

@@ -10,6 +10,29 @@ const ui = useUiStore()
 const { isMobile } = useMediaQuery()
 const speakers = ref<VoiceprintSpeaker[]>([])
 
+const gradients = [
+  'linear-gradient(135deg,#667eea,#764ba2)',
+  'linear-gradient(135deg,#f093fb,#f5576c)',
+  'linear-gradient(135deg,#4facfe,#00f2fe)',
+  'linear-gradient(135deg,#43e97b,#38f9d7)',
+  'linear-gradient(135deg,#fa709a,#fee140)',
+  'linear-gradient(135deg,#a18cd1,#fbc2eb)',
+  'linear-gradient(135deg,#fccb90,#d57eeb)',
+  'linear-gradient(135deg,#e0c3fc,#8ec5fc)',
+]
+const emojis = ['👤', '🧑', '👨', '👩', '🧔', '👱', '👴', '👵']
+
+function speakerStyle(idx: number) {
+  return {
+    gradient: gradients[idx % gradients.length],
+    emoji: emojis[idx % emojis.length],
+  }
+}
+
+function formatDate(iso: string) {
+  return iso.slice(0, 10)
+}
+
 function removeSpeaker(speaker: VoiceprintSpeaker) {
   ui.showToast(`🗑️ 已移除说话人：${speaker.name}`)
 }
@@ -31,25 +54,28 @@ onMounted(async () => {
 
     <div class="grid grid-cols-3 gap-3 mt-4">
       <div
-        v-for="speaker in speakers"
+        v-for="(speaker, idx) in speakers"
         :key="speaker.id"
         class="bg-[var(--surface)] rounded-[var(--radius-md)] border border-[var(--border)] shadow-[var(--shadow-sm)] p-4 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]"
       >
         <div class="flex items-center gap-3 mb-3">
           <div
-            class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"
-            :style="{ background: speaker.gradient }"
+            class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 text-white"
+            :style="{ background: speakerStyle(idx).gradient }"
           >
-            {{ speaker.emoji }}
+            {{ speakerStyle(idx).emoji }}
           </div>
           <div>
             <div class="text-sm font-extrabold text-[var(--text1)]">{{ speaker.name }}</div>
             <div class="text-[10px] text-[var(--teal)] font-bold">
-              {{ speaker.verified ? '✅ 已认证' : '⏳ 待认证' }}
+              {{ speaker.sampleCount }} 个样本 · {{ formatDate(speaker.registeredAt) }}
             </div>
           </div>
         </div>
-        <div class="text-[11px] text-[var(--text3)] leading-relaxed mb-3">
+        <div
+          v-if="speaker.description"
+          class="text-[11px] text-[var(--text3)] leading-relaxed mb-3"
+        >
           {{ speaker.description }}
         </div>
         <button
@@ -87,28 +113,32 @@ onMounted(async () => {
 
     <div class="flex-1 overflow-y-auto px-2">
       <div
-        v-for="speaker in speakers"
+        v-for="(speaker, idx) in speakers"
         :key="speaker.id"
         class="bg-[var(--surface)] rounded-[var(--radius-md)] p-4 mb-2.5 shadow-[var(--shadow-sm)] flex items-center justify-between transition-all duration-200 active:scale-[.98]"
       >
         <div class="flex items-center gap-2.5 flex-1 min-w-0">
           <div
-            class="w-11 h-11 rounded-[14px] flex items-center justify-center text-xl shrink-0"
-            :style="{ background: speaker.gradient }"
+            class="w-11 h-11 rounded-[14px] flex items-center justify-center text-xl shrink-0 text-white"
+            :style="{ background: speakerStyle(idx).gradient }"
           >
-            {{ speaker.emoji }}
+            {{ speakerStyle(idx).emoji }}
           </div>
           <div>
             <div class="flex items-center gap-1.5 mb-[3px]">
               <span class="text-sm font-extrabold text-[var(--text1)]">{{ speaker.name }}</span>
               <span
-                class="text-[10px] text-[var(--teal)] font-extrabold px-1.5 py-0.5 rounded-[20px]"
-                :class="speaker.verified ? 'bg-[#e8fdf5]' : 'bg-[var(--bg2)]'"
+                class="text-[10px] font-extrabold px-1.5 py-0.5 rounded-[20px] bg-[var(--bg2)] text-[var(--text3)]"
               >
-                {{ speaker.verified ? '✅ 已认证' : '待认证' }}
+                {{ speaker.sampleCount }} 样本
               </span>
             </div>
-            <div class="text-[11px] text-[var(--text3)]">{{ speaker.description }}</div>
+            <div v-if="speaker.description" class="text-[11px] text-[var(--text3)]">
+              {{ speaker.description }}
+            </div>
+            <div class="text-[10px] text-[var(--text3)] mt-0.5">
+              {{ formatDate(speaker.registeredAt) }}
+            </div>
           </div>
         </div>
         <button
