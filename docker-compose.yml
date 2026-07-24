@@ -1,18 +1,23 @@
 version: "3.9"
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: mingjing-pg
+  mysql:
+    image: mysql:8.0
+    container_name: mingjing-mysql
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: mingjing
+      MYSQL_ROOT_PASSWORD: root123
+      MYSQL_DATABASE: mingjing
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
@@ -23,7 +28,8 @@ services:
     env_file:
       - ./server/.env.production
     depends_on:
-      - postgres
+      mysql:
+        condition: service_healthy
     restart: unless-stopped
 
   nginx:
@@ -38,4 +44,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  pgdata:
+  mysql_data:
