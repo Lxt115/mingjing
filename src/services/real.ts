@@ -100,13 +100,17 @@ export function createRealApiService(): ApiService {
 
     voiceprint: {
       getList: () => unwrap(httpClient.get<ApiResponse<VoiceprintSpeaker[]>>('/voiceprint')),
-      register: (name, voiceSampleId) =>
-        unwrap(
-          httpClient.post<ApiResponse<VoiceprintSpeaker>>('/voiceprint/register', {
-            name,
-            voiceSampleId,
+      register: (name, description, audioFile) => {
+        const formData = new FormData()
+        formData.append('name', name)
+        formData.append('description', description)
+        formData.append('file', audioFile, 'voice.wav')
+        return unwrap(
+          httpClient.post<ApiResponse<VoiceprintSpeaker>>('/voiceprint/register', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
           }),
-        ),
+        )
+      },
       delete: (id) => unwrap(httpClient.delete<ApiResponse<null>>(`/voiceprint/${id}`)),
     },
 

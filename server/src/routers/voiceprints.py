@@ -1,11 +1,11 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_db
 from src import services
-from src.schemas.voiceprint import VoiceprintRegisterRequest
 from src.schemas.common import ApiResponse
+from src.config import settings
 import time
 
 router = APIRouter(prefix="/api/voiceprint", tags=["voiceprint"])
@@ -18,8 +18,16 @@ async def list_speakers(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/register", status_code=201)
-async def register_speaker(body: VoiceprintRegisterRequest, db: AsyncSession = Depends(get_db)):
-    speaker = await services.voiceprints.register_speaker(db, body.name, body.description)
+async def register_speaker(
+    name: str = Form(...),
+    description: str = Form(""),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    audio_data = await file.read()
+    speaker = await services.voiceprints.register_speaker(
+        db, name, description, audio_data, settings.voiceprint_url
+    )
     return ApiResponse(data=speaker, timestamp=time.time())
 
 

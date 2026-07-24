@@ -9,28 +9,33 @@ const { close } = useModal()
 const ui = useUiStore()
 
 const speakerName = ref('')
-const voiceSampleId = ref('')
 const desc = ref('')
+const audioFile = ref<File | null>(null)
 const saving = ref(false)
 
-const sampleOptions = [
-  { id: '1', label: '语音消息 2026-04-05 14:32 (3.2s)' },
-  { id: '2', label: '语音消息 2026-04-05 10:15 (4.1s)' },
-  { id: '3', label: '语音消息 2026-04-04 20:03 (2.8s)' },
-]
+function onFileChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  if (input.files && input.files.length > 0) {
+    audioFile.value = input.files[0]
+  }
+}
 
 async function confirmAdd() {
-  if (!voiceSampleId.value) {
-    ui.showToast('❌ 请选择声纹样本', 'error')
-    return
-  }
   if (!speakerName.value.trim()) {
     ui.showToast('❌ 请输入说话人名称', 'error')
     return
   }
+  if (!audioFile.value) {
+    ui.showToast('❌ 请选择声纹样本音频文件', 'error')
+    return
+  }
   saving.value = true
   try {
-    await apiService.voiceprint.register(speakerName.value.trim(), voiceSampleId.value)
+    await apiService.voiceprint.register(
+      speakerName.value.trim(),
+      desc.value.trim(),
+      audioFile.value,
+    )
     close()
     ui.showToast(`✅ 「${speakerName.value.trim()}」声纹已注册！`)
   } catch (e) {
@@ -43,7 +48,7 @@ async function confirmAdd() {
 
 <template>
   <div>
-    <InfoTip>💡 请选择2秒以上的清晰语音，避免背景噪音</InfoTip>
+    <InfoTip>💡 请选择5秒以上的清晰语音（WAV 格式），避免背景噪音</InfoTip>
 
     <div class="mb-[18px]">
       <label class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
@@ -54,6 +59,42 @@ async function confirmAdd() {
         class="w-full p-[11px] border-[1.5px] border-[var(--border)] rounded-[var(--radius-sm)] text-sm text-[var(--text1)] bg-[var(--bg)] outline-none transition-all duration-200 focus:border-[var(--coral)] focus:shadow-[0_0_0_3px_rgba(255,107,107,.1)] focus:bg-white"
         placeholder="例如：小明、妈妈"
       />
+    </div>
+
+    <div class="mb-[18px]">
+      <label class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
+        >说话人描述</label
+      >
+      <input
+        v-model="desc"
+        class="w-full p-[11px] border-[1.5px] border-[var(--border)] rounded-[var(--radius-sm)] text-sm text-[var(--text1)] bg-[var(--bg)] outline-none transition-all duration-200 focus:border-[var(--coral)] focus:shadow-[0_0_0_3px_rgba(255,107,107,.1)] focus:bg-white"
+        placeholder="例如：我的好朋友"
+      />
+    </div>
+
+    <div class="mb-[18px]">
+      <label class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
+        >声纹样本音频 *</label
+      >
+      <label
+        class="flex items-center justify-center w-full p-4 border-[1.5px] border-dashed border-[var(--border)] rounded-[var(--radius-sm)] cursor-pointer transition-all duration-200 hover:border-[var(--coral)] hover:bg-[rgba(255,107,107,.03)]"
+      >
+        <input
+          type="file"
+          accept=".wav,.mp3,.ogg,.m4a,audio/*"
+          class="hidden"
+          @change="onFileChange"
+        />
+        <div class="text-center">
+          <div class="text-2xl mb-1">{{ audioFile ? '✅' : '📁' }}</div>
+          <div class="text-sm font-bold text-[var(--text2)]">
+            {{ audioFile ? audioFile.name : '点击选择音频文件' }}
+          </div>
+          <div v-if="audioFile" class="text-[11px] text-[var(--text3)] mt-1">
+            {{ (audioFile.size / 1024).toFixed(1) }} KB
+          </div>
+        </div>
+      </label>
     </div>
 
     <div class="flex gap-3 mt-6">

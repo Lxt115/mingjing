@@ -59,7 +59,11 @@ export interface KnowledgeApi {
 
 export interface VoiceprintApi {
   getList(): Promise<ApiResponse<VoiceprintSpeaker[]>>
-  register(name: string, voiceSampleId: string): Promise<ApiResponse<VoiceprintSpeaker>>
+  register(
+    name: string,
+    description: string,
+    audioFile: Blob,
+  ): Promise<ApiResponse<VoiceprintSpeaker>>
   delete(id: string): Promise<ApiResponse<null>>
 }
 
