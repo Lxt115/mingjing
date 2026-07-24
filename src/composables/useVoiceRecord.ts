@@ -6,12 +6,15 @@ export function useVoiceRecord() {
   const recordDone = ref(false)
   const recordSecs = ref(0)
   const recordTimer = ref('00:00')
+  const audioBlob = ref<Blob | null>(null)
   const currentStep = ref<CloneStep>(1)
   const isLoading = ref(false)
   const loadStatus = ref('')
   const loadPercent = ref(0)
 
   let recordInterval: ReturnType<typeof setInterval> | null = null
+  let mediaRecorder: MediaRecorder | null = null
+  let audioChunks: Blob[] = []
 
   const stepStatuses = (): Record<CloneStep, StepStatus> => ({
     1: currentStep.value === 1 ? 'active' : currentStep.value > 1 ? 'done' : 'pending',
@@ -25,11 +28,41 @@ export function useVoiceRecord() {
     return `${m}:${s}`
   }
 
-  function startRecording() {
+  async function startRecording() {
+    audioChunks = []
+    audioBlob.value = null
     isRecording.value = true
     recordSecs.value = 0
     recordTimer.value = '00:00'
     recordDone.value = false
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm'
+      mediaRecorder = new MediaRecorder(stream, { mimeType })
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data)
+      }
+
+      mediaRecorder.onstop = () => {
+        const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : 'audio/webm'
+        audioBlob.value = new Blob(audioChunks, { type: mime })
+        audioChunks = []
+        // 停止所有轨道
+        stream.getTracks().forEach((t) => t.stop())
+      }
+
+      mediaRecorder.start()
+    } catch (e) {
+      console.error('[voiceRecord] 麦克风访问被拒绝:', e)
+      isRecording.value = false
+      return
+    }
 
     recordInterval = setInterval(() => {
       recordSecs.value++
@@ -43,12 +76,17 @@ export function useVoiceRecord() {
       clearInterval(recordInterval)
       recordInterval = null
     }
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop()
+    }
     isRecording.value = false
     recordDone.value = true
   }
 
   function resetRecording() {
     stopRecording()
+    audioChunks = []
+    audioBlob.value = null
     recordSecs.value = 0
     recordTimer.value = '00:00'
     recordDone.value = false
@@ -101,6 +139,7 @@ export function useVoiceRecord() {
     recordDone,
     recordSecs,
     recordTimer,
+    audioBlob,
     currentStep,
     isLoading,
     loadStatus,
