@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.voiceprint import VoiceprintSpeaker
 from src.schemas.voiceprint import VoiceprintSpeakerResponse
+from src.config import settings
 
 
 async def list_speakers(db: AsyncSession) -> list[VoiceprintSpeakerResponse]:
@@ -50,6 +51,11 @@ async def delete_speaker(db: AsyncSession, speaker_id: uuid.UUID) -> bool:
     speaker = result.scalar_one_or_none()
     if not speaker:
         return False
+
+    # 同步删除外部 voiceprint-api 中的声纹
+    if settings.voiceprint_url:
+        await _delete_from_external_api(str(speaker_id), settings.voiceprint_url)
+
     await db.delete(speaker)
     await db.commit()
     return True
@@ -70,7 +76,6 @@ async def _register_with_external_api(
     speaker_id: str,
     voiceprint_url: str,
 ) -> bool:
-    """将音频注册到外部的 voiceprint-api 服务。"""
     try:
         parsed = urlparse(voiceprint_url)
         base_url = f"{parsed.scheme}://{parsed.netloc}"
@@ -119,3 +124,36 @@ def _to_response(s: VoiceprintSpeaker) -> VoiceprintSpeakerResponse:
         registered_at=s.registered_at,
         sample_count=s.sample_count,
     )
+
+
+async def _delete_from_external_api(speaker_id: str, voiceprint_url: str) -> bool:
+    """同步删除外部 voiceprint-api 中的声纹。"""
+    try:
+        parsed = urlparse(voiceprint_url)
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+        query_params = parse_qs(parsed.query)
+        api_key = query_params.get("key", [""])[0]
+
+        if not api_key:
+            print("[voiceprint] 未配置 API key，跳过外部删除")
+            return False
+
+        delete_url = f"{base_url}/voiceprint/{speaker_id}"
+        headers = {"Authorization": f"Bearer {api_key}"}
+
+        timeout = aiohttp.ClientTimeout(total=10)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.delete(delete_url, headers=headers) as response:
+                if response.status == 200:
+                    print(f"[voiceprint] 外部删除成功: speaker_id={speaker_id}")
+                    return True
+                else:
+                    text = await response.text()
+                    print(f"[voiceprint] 外部删除失败: HTTP {response.status}, {text}")
+                    return False
+    except aiohttp.ClientError as e:
+        print(f"[voiceprint] 外部删除网络错误: {e}")
+        return False
+    except Exception as e:
+        print(f"[voiceprint] 外部删除异常: {e}")
+        return False
