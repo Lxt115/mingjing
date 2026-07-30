@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useUiStore } from '@/store'
 import { useMediaQuery } from '@/composables'
 import { apiService } from '@/services'
@@ -48,9 +48,23 @@ function addSpeaker() {
 }
 
 onMounted(async () => {
+  await loadSpeakers()
+})
+
+// 添加说话人弹窗关闭后自动刷新列表
+watch(
+  () => ui.activeModalId,
+  async (curr, prev) => {
+    if (prev === 'modal-add-speaker' && curr === null) {
+      await loadSpeakers()
+    }
+  },
+)
+
+async function loadSpeakers() {
   const res = await apiService.voiceprint.getList()
   speakers.value = res.data
-})
+}
 </script>
 
 <template>
