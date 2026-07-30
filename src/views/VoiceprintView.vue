@@ -33,8 +33,14 @@ function formatDate(iso: string) {
   return iso.slice(0, 10)
 }
 
-function removeSpeaker(speaker: VoiceprintSpeaker) {
-  ui.showToast(`🗑️ 已移除说话人：${speaker.name}`)
+async function removeSpeaker(speaker: VoiceprintSpeaker) {
+  try {
+    await apiService.voiceprint.delete(speaker.id)
+    speakers.value = speakers.value.filter((s) => s.id !== speaker.id)
+    ui.showToast(`🗑️ 已移除说话人：${speaker.name}`)
+  } catch (e) {
+    ui.showToast(e instanceof Error ? e.message : '❌ 移除失败', 'error')
+  }
 }
 
 function addSpeaker() {
