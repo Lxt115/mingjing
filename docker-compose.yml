@@ -39,6 +39,7 @@ services:
     container_name: mingjing-nginx
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       - backend
     restart: unless-stopped
