@@ -28,7 +28,18 @@ const {
 
 const lastTimer = ref('00:00')
 const audioFile = ref<File | null>(null)
-const promptText = '春天来了，花儿都开放了。小鸟在枝头欢快地歌唱，蜜蜂也飞来飞去忙着采蜜。'
+const promptTexts = [
+  '春天来了，花儿都开放了。小鸟在枝头欢快地歌唱，蜜蜂也飞来飞去忙着采蜜。',
+  '今天天气真好，阳光明媚，万里无云。我打算去公园散步，呼吸新鲜空气。',
+  '晚上我在家里看书，听到窗外传来一阵阵虫鸣声，让人觉得特别安静和舒服。',
+  '我最喜欢吃妈妈做的番茄炒蛋，酸甜可口，每次都让我多吃一碗饭。',
+  '周末我和朋友一起去爬山，山顶的风景非常漂亮，能看到整座城市。',
+]
+const promptIndex = ref(0)
+const promptText = computed(() => promptTexts[promptIndex.value])
+function nextPrompt() {
+  promptIndex.value = (promptIndex.value + 1) % promptTexts.length
+}
 
 function toggleRecord() {
   if (!isRecording.value) {
@@ -128,11 +139,21 @@ onMounted(() => {
       <template v-if="canRecord">
         <div
           :class="[
-            'bg-[var(--bg)] rounded-[var(--radius-sm)] p-4 mb-3.5 text-sm leading-relaxed text-[var(--text2)] font-medium border-2 transition-colors',
+            'bg-[var(--bg)] rounded-[var(--radius-sm)] p-4 mb-2 text-sm leading-relaxed text-[var(--text2)] font-medium border-2 transition-colors relative',
             recordDone ? 'border-[var(--teal)] bg-[rgba(0,201,167,.05)]' : 'border-[var(--border)]',
           ]"
         >
+          <div class="text-[10px] font-extrabold text-[var(--text3)] mb-1.5">
+            朗读文本（{{ promptIndex + 1 }}/{{ promptTexts.length }}）
+          </div>
           {{ promptText }}
+          <button
+            v-if="!isRecording"
+            class="absolute top-2 right-2 text-[11px] font-bold text-[var(--coral)] bg-transparent border-none cursor-pointer"
+            @click="nextPrompt"
+          >
+            换一段 ↻
+          </button>
         </div>
 
         <div class="text-center py-4">
