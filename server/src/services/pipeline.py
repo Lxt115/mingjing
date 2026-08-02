@@ -4,6 +4,7 @@ import base64
 import json
 import asyncio
 import io
+import time
 import wave
 from datetime import datetime, timezone, timedelta
 
@@ -163,7 +164,7 @@ async def _build_llm_messages(
 
     # ── 使用 PromptManager 构建增强系统提示词（时间/日期/农历/位置/天气）──
     pm = get_prompt_manager()
-    system_prompt = pm.build_enhanced_prompt(
+    system_prompt = await pm.build_enhanced_prompt(
         base_prompt=agent.system_prompt or "",
         agent_id=str(agent.id),
         location=settings.weather_default_location,
@@ -299,6 +300,179 @@ async def speech_pipeline(
     return result
 
 
+def _split_sentences_stream(buf: str) -> tuple[list[str], str]:
+    """将流式文本按句子边界切分（流式分句，供 TTS 边生成边合成）。
+
+    Returns: (完整句子列表, 剩余待补全文本)
+    """
+    sentences: list[str] = []
+    start = 0
+    i = 0
+    n = len(buf)
+    while i < n:
+        ch = buf[i]
+        if ch in "。！？；\n":
+            sentences.append(buf[start : i + 1])
+            start = i + 1
+        elif ch in ".!?":
+            nxt = buf[i + 1] if i + 1 < n else ""
+            # 英文标点后紧跟数字时不视为句子边界（如 3.14）
+            if nxt and not nxt.isdigit():
+                sentences.append(buf[start : i + 1])
+                start = i + 1
+        i += 1
+    return sentences, buf[start:]
+
+
+async def _stream_llm_answer_with_tts(
+    db: AsyncSession,
+    agent: Agent,
+    llm,
+    messages: list[dict],
+    system_prompt: str,
+    user_text: str,
+    conversation_id: uuid.UUID | None,
+    user_id: uuid.UUID | None = None,
+):
+    """LLM 流式生成 + 句子级 TTS 重叠输出（参考 xiaozhi 架构）。
+
+    LLM 每生成完一句话，立即送入 TTS 流式合成并下发，第一句话在 LLM
+    还在生成剩余内容时就开始播放，首响延迟从「完整生成时间」降到「一句话的时间」。
+
+    Yields: {"type": "text_chunk"|"audio_chunk"|"error"|"audio_done"|"done", ...}
+    """
+    voice_name = _pick_voice_name(agent)
+    tts = get_tts()
+    print(f"[PIPELINE] TTS provider={type(tts).__name__}, voice={voice_name}, 句子级流式合成启动")
+
+    sentence_queue: asyncio.Queue = asyncio.Queue()
+    audio_queue: asyncio.Queue = asyncio.Queue()
+    state = {"llm_done": False, "llm_error": None, "full_text": ""}
+
+    async def llm_task():
+        """后台驱动 LLM 流式 + 工具调用循环，把最终回答按句送入 TTS 队列。"""
+        full_text = ""
+        search_depth = 0
+        tool_depth = 0
+        try:
+            while True:
+                round_text = ""
+                tool_round = False
+                sent_buf = ""
+                async for token in llm.chat_stream(messages=messages, system_prompt=system_prompt):
+                    if token.startswith("["):
+                        state["llm_error"] = token
+                        return
+                    round_text += token
+                    # 工具调用轮：文本不入 TTS，等工具执行后由下一轮回答
+                    if not tool_round and "<TOOL:" in round_text:
+                        tool_round = True
+                        sent_buf = ""
+                    if not tool_round:
+                        sent_buf += token
+                        sentences, sent_buf = _split_sentences_stream(sent_buf)
+                        for s in sentences:
+                            sentence_queue.put_nowait(("sentence", s))
+
+                messages, full_text, search_depth, tool_depth, should_continue = await _handle_tool_calls(
+                    round_text, messages, full_text, search_depth, tool_depth,
+                )
+                if not should_continue:
+                    # 最终回答：剩余未成句文本也送入合成
+                    if sent_buf.strip():
+                        sentence_queue.put_nowait(("sentence", sent_buf))
+                    break
+        except Exception as e:
+            state["llm_error"] = f"[LLM 流式异常: {type(e).__name__}: {e}]"
+            print(state["llm_error"])
+        finally:
+            sentence_queue.put_nowait(("done", None))
+            state["full_text"] = full_text
+            state["llm_done"] = True
+
+    async def tts_worker():
+        """消费句子队列，逐句流式 TTS 合成，输出 PCM 音频块。"""
+        audio_error = ""
+        try:
+            while True:
+                evt = await sentence_queue.get()
+                if evt[0] == "done":
+                    break
+                text = evt[1]
+                if not text.strip():
+                    continue
+                try:
+                    clean_text = clean_tts_text(text)
+                    if not clean_text:
+                        continue
+                    async for chunk in tts.synthesize_streaming(
+                        text=clean_text,
+                        voice_name=voice_name,
+                        speed=agent.speed,
+                        volume=agent.volume,
+                        pitch=agent.pitch,
+                    ):
+                        audio_queue.put_nowait(("chunk", chunk))
+                except Exception as e:
+                    audio_error = str(e)
+                    print(f"[TTS] 句子合成失败: {audio_error}")
+        finally:
+            audio_queue.put_nowait(("done", audio_error))
+
+    llm_task_handle = asyncio.create_task(llm_task())
+    tts_task_handle = asyncio.create_task(tts_worker())
+
+    text_chunk_sent = False
+    t_start = time.perf_counter()
+    first_audio_at: float | None = None
+    try:
+        while True:
+            if not text_chunk_sent and state["llm_done"]:
+                text_chunk_sent = True
+                if state.get("llm_error"):
+                    yield {"type": "error", "message": state["llm_error"]}
+                    return
+                print(f"[PIPELINE] LLM done, answer_len={len(state['full_text'])}，音频已边生成边下发")
+                yield {"type": "text_chunk", "content": state["full_text"]}
+
+            evt = await audio_queue.get()
+            if evt[0] == "chunk":
+                if first_audio_at is None:
+                    first_audio_at = time.perf_counter()
+                    print(f"[PIPELINE] 首帧音频延迟(LLM启动→首音频): {(first_audio_at - t_start) * 1000:.0f}ms")
+                yield {"type": "audio_chunk", "content": base64.b64encode(evt[1]).decode()}
+            elif evt[0] == "error":
+                yield {"type": "error", "message": evt[1]}
+                return
+            elif evt[0] == "done":
+                full_text = state["full_text"]
+                audio_error = evt[1]
+                print(f"[PIPELINE] 整轮耗时: {(time.perf_counter() - t_start) * 1000:.0f}ms")
+
+                conv_id = await _persist_conversation(
+                    db, conversation_id, agent, user_text, full_text, user_id=user_id,
+                )
+
+                # ── 异步保存记忆（不阻塞响应）──
+                asyncio.create_task(_save_memory_bg(agent.id, user_text, full_text))
+
+                emoji, emotion = _extract_emoji(full_text)
+                yield {
+                    "type": "audio_done",
+                    "audio_format": "pcm",
+                    "audio_error": audio_error,
+                    "conversation_id": str(conv_id),
+                    "emoji": emoji,
+                    "emotion": emotion,
+                }
+                yield {"type": "done"}
+                return
+    finally:
+        for t in (llm_task_handle, tts_task_handle):
+            if not t.done():
+                t.cancel()
+
+
 async def speech_pipeline_stream(
     db: AsyncSession,
     audio_bytes: bytes,
@@ -340,71 +514,10 @@ async def speech_pipeline_stream(
     )
 
     llm = get_llm()
-
-    full_text = ""
-    search_depth = 0
-    tool_depth = 0
-
-    while True:
-        round_text = ""
-        async for token in llm.chat_stream(messages=messages, system_prompt=system_prompt):
-            if token.startswith("["):
-                yield {"type": "error", "message": token}
-                return
-            round_text += token
-
-        messages, full_text, search_depth, tool_depth, should_continue = await _handle_tool_calls(
-            round_text, messages, full_text, search_depth, tool_depth,
-        )
-        if not should_continue:
-            break
-
-    # 发送文本流
-    final_answer = full_text
-    yield {"type": "text_chunk", "content": final_answer}
-
-    print(f"[PIPELINE] LLM done, answer_len={len(final_answer)}, starting TTS...")
-    voice_name = _pick_voice_name(agent)
-    print(f"[PIPELINE] voice_name={voice_name}")
-    tts = get_tts()
-    print(f"[PIPELINE] tts provider type={type(tts).__name__}")
-    audio_error = ""
-    total_tts_bytes = 0
-    total_tts_chunks = 0
-    print(f"[TTS] 音色: {voice_name}, 文本长度: {len(final_answer)}")
-    try:
-        tts_text = clean_tts_text(final_answer)
-        async for chunk in tts.synthesize_streaming(
-            text=tts_text,
-            voice_name=voice_name,
-            speed=agent.speed,
-            volume=agent.volume,
-            pitch=agent.pitch,
-        ):
-            total_tts_bytes += len(chunk)
-            total_tts_chunks += 1
-            yield {"type": "audio_chunk", "content": base64.b64encode(chunk).decode()}
-        print(f"[DEBUG] TTS stream: {total_tts_chunks} chunks, {total_tts_bytes} bytes, ~{total_tts_bytes//32}ms")
-    except Exception as e:
-        audio_error = str(e)
-        print(f"[TTS] 流式合成失败: {audio_error}")
-
-    conv_id = await _persist_conversation(db, conversation_id, agent, text, final_answer, user_id=user_id)
-
-    # ── 异步保存记忆（不阻塞响应）──
-    asyncio.create_task(_save_memory_bg(agent.id, text, final_answer))
-
-    emoji, emotion = _extract_emoji(final_answer)
-
-    yield {
-        "type": "audio_done",
-        "audio_format": "pcm",
-        "audio_error": audio_error,
-        "conversation_id": str(conv_id),
-        "emoji": emoji,
-        "emotion": emotion,
-    }
-    yield {"type": "done"}
+    async for event in _stream_llm_answer_with_tts(
+        db, agent, llm, messages, system_prompt, text, conversation_id, user_id=user_id,
+    ):
+        yield event
 
 
 async def chat_pipeline_stream(
@@ -423,61 +536,10 @@ async def chat_pipeline_stream(
     system_prompt, messages = await _build_llm_messages(db, agent, text, conversation_id, client_ip)
 
     llm = get_llm()
-
-    full_text = ""
-    search_depth = 0
-    tool_depth = 0
-
-    while True:
-        round_text = ""
-        async for token in llm.chat_stream(messages=messages, system_prompt=system_prompt):
-            if token.startswith("["):
-                yield {"type": "error", "message": token}
-                return
-            round_text += token
-
-        messages, full_text, search_depth, tool_depth, should_continue = await _handle_tool_calls(
-            round_text, messages, full_text, search_depth, tool_depth,
-        )
-        if not should_continue:
-            break
-
-    final_answer = full_text
-    yield {"type": "text_chunk", "content": final_answer}
-
-    voice_name = _pick_voice_name(agent)
-    tts = get_tts()
-    audio_error = ""
-    try:
-        tts_text = clean_tts_text(final_answer)
-        async for chunk in tts.synthesize_streaming(
-            text=tts_text,
-            voice_name=voice_name,
-            speed=agent.speed,
-            volume=agent.volume,
-            pitch=agent.pitch,
-        ):
-            yield {"type": "audio_chunk", "content": base64.b64encode(chunk).decode()}
-    except Exception as e:
-        audio_error = str(e)
-        print(f"[TTS] chat流式合成失败: {audio_error}")
-
-    conv_id = await _persist_conversation(db, conversation_id, agent, text, final_answer, user_id=user_id)
-
-    # ── 异步保存记忆（不阻塞响应）──
-    asyncio.create_task(_save_memory_bg(agent.id, text, final_answer))
-
-    emoji, emotion = _extract_emoji(final_answer)
-
-    yield {
-        "type": "audio_done",
-        "audio_format": "pcm",
-        "audio_error": audio_error,
-        "conversation_id": str(conv_id),
-        "emoji": emoji,
-        "emotion": emotion,
-    }
-    yield {"type": "done"}
+    async for event in _stream_llm_answer_with_tts(
+        db, agent, llm, messages, system_prompt, text, conversation_id, user_id=user_id,
+    ):
+        yield event
 
 
 async def _save_memory_bg(agent_id: uuid.UUID, user_text: str, ai_text: str) -> None:

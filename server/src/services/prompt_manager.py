@@ -14,6 +14,7 @@ CHINA_TZ = timezone(timedelta(hours=8))
 from pathlib import Path
 from typing import Optional
 
+import httpx
 from jinja2 import Template
 
 # ── 星期映射 ──
@@ -86,15 +87,15 @@ class PromptManager:
         else:
             print(f"[prompt_manager] 模板文件不存在: {template_path}，使用简单模式")
 
-    def _get_weather(self, location: str) -> str:
-        """获取天气信息（带缓存）。"""
+    async def _get_weather(self, location: str) -> str:
+        """获取天气信息（带缓存，异步不阻塞事件循环）。"""
         try:
             from src.services.get_weather import get_weather
             from src.config import settings
 
             api_key = settings.weather_api_key
             api_host = settings.weather_api_host
-            return get_weather(
+            return await get_weather(
                 location=location,
                 api_host=api_host,
                 api_key=api_key,
@@ -103,13 +104,11 @@ class PromptManager:
             print(f"[prompt_manager] 天气获取失败: {e}")
             return ""
 
-    def _get_ip_location(self, client_ip: str) -> str:
-        """通过 IP 获取城市名。"""
+    async def _get_ip_location(self, client_ip: str) -> str:
+        """通过 IP 获取城市名（异步不阻塞事件循环）。"""
         if not client_ip:
             return ""
         try:
-            import requests
-
             # 简单内存缓存（同 IP 不重复查）
             cache_key = f"ip_loc:{client_ip}"
             if cache_key in self._cache:
@@ -126,8 +125,9 @@ class PromptManager:
                 return ""
 
             url = f"https://whois.pconline.com.cn/ipJson.jsp?json=true&ip={client_ip}"
-            resp = requests.get(url, timeout=5)
-            data = resp.json()
+            async with httpx.AsyncClient(timeout=5) as client:
+                resp = await client.get(url)
+                data = resp.json()
             city = data.get("city", "")
             if city:
                 self._cache[cache_key] = (datetime.now(), city)
@@ -137,7 +137,7 @@ class PromptManager:
             print(f"[prompt_manager] IP 定位失败: {e}")
             return ""
 
-    def build_enhanced_prompt(
+    async def build_enhanced_prompt(
         self,
         base_prompt: str,
         agent_id: str = "",
@@ -163,13 +163,13 @@ class PromptManager:
         today_date, today_weekday, lunar_date = _get_current_time_info()
 
         # IP 自动定位：优先使用 IP 获取的城市
-        ip_city = self._get_ip_location(client_ip) if client_ip else ""
+        ip_city = await self._get_ip_location(client_ip) if client_ip else ""
         if ip_city:
             location = ip_city
 
         # 如果没有显式传入天气，尝试自动获取
         if not weather and location:
-            weather = self._get_weather(location)
+            weather = await self._get_weather(location)
 
         # 简单模板模式（无 agent-base-prompt.txt）
         if not self.template:

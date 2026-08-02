@@ -1,5 +1,5 @@
 """
-天气查询服务 —— 基于和风天气 API。
+天气查询服务 —— 基于和风天气 API（异步实现）。
 
 流程：
 1. 通过 Geo API 查询城市经纬度
@@ -7,7 +7,7 @@
 3. 缓存结果避免频繁请求
 """
 
-import requests
+import httpx
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 
@@ -42,11 +42,12 @@ HEADERS = {
 _cache: dict = {}
 
 
-def _fetch_city_info(location: str, api_host: str, api_key: str) -> dict | None:
+async def _fetch_city_info(location: str, api_host: str, api_key: str) -> dict | None:
     """通过和风天气 Geo API 获取城市信息。"""
     url = f"https://{api_host}/geo/v2/city/lookup?key={api_key}&location={location}&lang=zh"
-    resp = requests.get(url, headers=HEADERS, timeout=10)
-    data = resp.json()
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(url, headers=HEADERS)
+        data = resp.json()
     if data.get("code") != "200":
         print(f"[weather] Geo API 错误: {data}")
         return None
@@ -54,10 +55,11 @@ def _fetch_city_info(location: str, api_host: str, api_key: str) -> dict | None:
     return locations[0] if locations else None
 
 
-def _fetch_weather_page(url: str) -> BeautifulSoup | None:
+async def _fetch_weather_page(url: str) -> BeautifulSoup | None:
     """抓取和风天气网页。"""
-    resp = requests.get(url, headers=HEADERS, timeout=10)
-    return BeautifulSoup(resp.text, "html.parser") if resp.ok else None
+    async with httpx.AsyncClient(timeout=10) as client:
+        resp = await client.get(url, headers=HEADERS)
+    return BeautifulSoup(resp.text, "html.parser") if resp.status_code == 200 else None
 
 
 def _parse_weather(soup: BeautifulSoup) -> str:
@@ -106,12 +108,12 @@ def _parse_weather(soup: BeautifulSoup) -> str:
         return ""
 
 
-def get_weather(
+async def get_weather(
     location: str = "北京",
     api_host: str = "mj7p3y7naa.re.qweatherapi.com",
     api_key: str = "",
 ) -> str:
-    """获取指定城市的天气信息（带缓存）。
+    """获取指定城市的天气信息（带缓存，异步）。
 
     Args:
         location: 城市名，如"北京"、"广州"
@@ -133,7 +135,7 @@ def get_weather(
             return cached_text
 
     try:
-        city_info = _fetch_city_info(location, api_host, api_key)
+        city_info = await _fetch_city_info(location, api_host, api_key)
         if not city_info:
             print(f"[weather] 未找到城市: {location}")
             return ""
@@ -143,7 +145,7 @@ def get_weather(
             print(f"[weather] 无天气链接: {location}")
             return ""
 
-        soup = _fetch_weather_page(fx_link)
+        soup = await _fetch_weather_page(fx_link)
         if not soup:
             print(f"[weather] 无法获取天气页面: {fx_link}")
             return ""
@@ -154,10 +156,10 @@ def get_weather(
             print(f"[weather] 天气获取成功: {location}")
         return weather_text
 
-    except requests.exceptions.Timeout:
+    except httpx.TimeoutException:
         print(f"[weather] 请求超时: {location}")
         return ""
-    except requests.exceptions.RequestException as e:
+    except httpx.RequestError as e:
         print(f"[weather] 请求失败: {e}")
         return ""
     except Exception as e:
