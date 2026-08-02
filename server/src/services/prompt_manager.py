@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Optional
 
 import httpx
+import json
 from jinja2 import Template
 
 # ── 星期映射 ──
@@ -127,7 +128,8 @@ class PromptManager:
             url = f"https://whois.pconline.com.cn/ipJson.jsp?json=true&ip={client_ip}"
             async with httpx.AsyncClient(timeout=5) as client:
                 resp = await client.get(url)
-                data = resp.json()
+            # 该接口返回 GBK 编码，需显式解码
+            data = json.loads(resp.content.decode("gbk", errors="ignore"))
             city = data.get("city", "")
             if city:
                 self._cache[cache_key] = (datetime.now(), city)

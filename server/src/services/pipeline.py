@@ -445,6 +445,10 @@ async def _stream_llm_answer_with_tts(
                 yield {"type": "error", "message": evt[1]}
                 return
             elif evt[0] == "done":
+                # LLM 出错时也要上报错误，避免静默无回复
+                if state.get("llm_error"):
+                    yield {"type": "error", "message": state["llm_error"]}
+                    return
                 full_text = state["full_text"]
                 audio_error = evt[1]
                 print(f"[PIPELINE] 整轮耗时: {(time.perf_counter() - t_start) * 1000:.0f}ms")
