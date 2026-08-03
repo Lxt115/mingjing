@@ -1,14 +1,34 @@
 import uuid
+import io
 from datetime import datetime
 from urllib.parse import urlparse, parse_qs
 
 import aiohttp
+from pydub import AudioSegment
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.voiceprint import VoiceprintSpeaker
 from src.schemas.voiceprint import VoiceprintSpeakerResponse
 from src.config import settings
+
+
+def _to_wav_16k(audio_data: bytes) -> bytes | None:
+    """将任意格式音频转换为 16kHz 单声道 16bit WAV（voiceprint-api 要求的格式）。
+
+    返回转换后的 WAV 字节；转换失败返回 None。
+    """
+    try:
+        audio = AudioSegment.from_file(io.BytesIO(audio_data))
+        if len(audio) < 500:
+            print(f"[voiceprint] 警告: 音频过短 {len(audio)}ms，注册可能失败")
+        audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
+        buf = io.BytesIO()
+        audio.export(buf, format="wav")
+        return buf.getvalue()
+    except Exception as e:
+        print(f"[voiceprint] 音频转码失败: {e}")
+        return None
 
 
 async def list_speakers(db: AsyncSession) -> list[VoiceprintSpeakerResponse]:
@@ -91,9 +111,15 @@ async def _register_with_external_api(
             "Authorization": f"Bearer {api_key}",
         }
 
+        # voiceprint-api 只接受标准 16kHz 单声道 WAV，先把上传音频统一转码
+        wav_data = _to_wav_16k(audio_data)
+        if wav_data is None:
+            print("[voiceprint] 音频转码失败，跳过外部注册")
+            return False
+
         data = aiohttp.FormData()
         data.add_field("speaker_id", speaker_id)
-        data.add_field("file", audio_data, filename="voice.wav", content_type="audio/wav")
+        data.add_field("file", wav_data, filename="voice.wav", content_type="audio/wav")
 
         timeout = aiohttp.ClientTimeout(total=30)
 
