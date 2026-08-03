@@ -193,3 +193,161 @@ def _cleanup_temp(tmp_file) -> None:
             os.unlink(tmp_file.name)
         except Exception:
             pass
+
+
+class StreamingBailianSTT:
+    """百炼 fun-asr-realtime 流式识别会话（边收边识别）。
+
+    与批式 transcribe 共用同一个 duplex WebSocket 协议，区别在于：
+    - 音频帧随到随发（原始 PCM，format=pcm）
+    - 识别结果实时回流（result-generated 事件）
+    - audio_end 时发送 finish-task 拿最终文本，通常几百毫秒内完成
+    任何一步失败都返回以 '[' 开头的错误描述，由调用方回退到批式识别。
+    """
+
+    def __init__(self, api_key: str = ""):
+        self.api_key = api_key or settings.dashscope_api_key
+        self._ws = None
+        self._task_id = uuid.uuid4().hex[:32]
+        self._sentences: dict[int, str] = {}
+        self._pending = bytearray()  # 连接就绪前收到的音频帧缓存
+        self._result_queue: asyncio.Queue = asyncio.Queue()
+        self._reader_task: asyncio.Task | None = None
+        self._ready = False
+        self._closed = False
+
+    @property
+    def enabled(self) -> bool:
+        return bool(self.api_key)
+
+    async def connect(self) -> None:
+        """打开 WebSocket 并发起 run-task，等待 task-started。"""
+        ws_url = "wss://dashscope.aliyuncs.com/api-ws/v1/inference/"
+        headers = {"Authorization": f"Bearer {self.api_key}"}
+        self._ws = await _ws_connect(ws_url, headers).__aenter__()
+
+        run_task_msg = {
+            "header": {
+                "action": "run-task",
+                "task_id": self._task_id,
+                "streaming": "duplex"
+            },
+            "payload": {
+                "task_group": "audio",
+                "task": "asr",
+                "function": "recognition",
+                "model": "fun-asr-realtime",
+                "parameters": {
+                    "format": "pcm",
+                    "sample_rate": 16000
+                },
+                "input": {}
+            }
+        }
+        await self._ws.send(json.dumps(run_task_msg))
+
+        # 等待 task-started，期间收到的音频帧暂存，就绪后统一补发
+        while True:
+            try:
+                msg = await asyncio.wait_for(self._ws.recv(), timeout=15)
+            except asyncio.TimeoutError:
+                raise TimeoutError("streaming stt: 等待 task-started 超时")
+            try:
+                data = json.loads(msg)
+            except json.JSONDecodeError:
+                continue
+            event = data.get("header", {}).get("event", "")
+            if event == "task-started":
+                self._ready = True
+                break
+            if event == "task-failed":
+                raise RuntimeError(data.get("header", {}).get("error_message", "unknown"))
+
+        if self._pending:
+            await self._ws.send(bytes(self._pending))
+            self._pending.clear()
+        self._reader_task = asyncio.create_task(self._read_loop())
+
+    async def send_audio(self, pcm: bytes) -> None:
+        """发送一段 PCM 音频（16k/16bit/单声道）。连接未就绪时先缓存。"""
+        if self._closed or not pcm:
+            return
+        if not self._ready:
+            self._pending.extend(pcm)
+            return
+        await self._ws.send(pcm)
+
+    async def _read_loop(self) -> None:
+        try:
+            while True:
+                try:
+                    msg = await asyncio.wait_for(self._ws.recv(), timeout=30)
+                except asyncio.TimeoutError:
+                    continue
+                try:
+                    data = json.loads(msg)
+                except json.JSONDecodeError:
+                    continue
+                event = data.get("header", {}).get("event", "")
+                if event == "result-generated":
+                    sentence = data.get("payload", {}).get("output", {}).get("sentence", {})
+                    text = sentence.get("text", "")
+                    sid = sentence.get("sentence_id", 0)
+                    if text:
+                        self._sentences[sid] = text
+                        await self._result_queue.put(("partial", self._full_text()))
+                elif event == "task-finished":
+                    await self._result_queue.put(("final", self._full_text()))
+                    break
+                elif event == "task-failed":
+                    await self._result_queue.put(("error", data.get("header", {}).get("error_message", "unknown")))
+                    break
+        except Exception as e:
+            await self._result_queue.put(("error", f"{type(e).__name__}: {e}"))
+
+    def _full_text(self) -> str:
+        return "".join(self._sentences[sid] for sid in sorted(self._sentences))
+
+    async def finalize(self, timeout: float = 4.0) -> str:
+        """发送 finish-task，返回最终识别文本；失败返回以 '[' 开头的错误描述。"""
+        if not self._ready:
+            return "[百炼 STT 流式未就绪]"
+        finish_task_msg = {
+            "header": {
+                "action": "finish-task",
+                "task_id": self._task_id,
+                "streaming": "duplex"
+            },
+            "payload": {"input": {}}
+        }
+        try:
+            await self._ws.send(json.dumps(finish_task_msg))
+            while True:
+                kind, payload = await asyncio.wait_for(self._result_queue.get(), timeout=timeout)
+                if kind == "partial":
+                    continue
+                if kind == "final":
+                    return payload
+                return f"[百炼 STT 流式失败: {payload}]"
+        except asyncio.TimeoutError:
+            return "[百炼 STT 流式 finalize 超时]"
+        except Exception as e:
+            return f"[百炼 STT 流式异常: {type(e).__name__}: {e}]"
+
+    async def close(self) -> None:
+        """关闭会话：取消读取任务并关闭 WebSocket。"""
+        if self._closed:
+            return
+        self._closed = True
+        if self._reader_task and not self._reader_task.done():
+            self._reader_task.cancel()
+            try:
+                await self._reader_task
+            except (asyncio.CancelledError, Exception):
+                pass
+        if self._ws is not None:
+            try:
+                await self._ws.close()
+            except Exception:
+                pass
+        self._ws = None

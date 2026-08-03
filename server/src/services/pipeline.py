@@ -486,16 +486,22 @@ async def speech_pipeline_stream(
     conversation_id: uuid.UUID | None = None,
     client_ip: str = "",
     user_id: uuid.UUID | None = None,
+    pre_transcribed_text: str | None = None,
 ):
-    # ── 并行执行 STT 和声纹识别 ──
-    stt = get_stt()
-    stt_task = asyncio.create_task(stt.transcribe(audio_bytes, audio_format))
+    # ── 声纹识别与（可选）批式 STT；流式 STT 已有结果则跳过批式 ──
     voiceprint_task = asyncio.create_task(_run_voiceprint(db, audio_bytes))
 
-    text = await stt_task
-    if isinstance(text, Exception):
-        yield {"type": "error", "message": f"STT 异常: {text}"}
-        return
+    if pre_transcribed_text:
+        # 流式 STT 边收边识别已完成，直接使用其结果
+        text = pre_transcribed_text
+    else:
+        # 批式 STT 兜底（流式未启用 / 连接失败 / 无结果）
+        stt = get_stt()
+        text = await stt.transcribe(audio_bytes, audio_format)
+        if isinstance(text, Exception):
+            yield {"type": "error", "message": f"STT 异常: {text}"}
+            return
+
     if text.startswith("["):
         yield {"type": "error", "message": text}
         return

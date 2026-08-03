@@ -1,5 +1,6 @@
 import json
 import asyncio
+import time
 from opuslib_next import Encoder, Decoder
 from opuslib_next import constants
 from fastapi import WebSocket, WebSocketDisconnect
@@ -8,6 +9,7 @@ from src.ws.manager import manager
 from src.database import async_session_factory
 from src.services import pipeline
 from src.models.agent import Agent
+from src.providers.stt.bailian import StreamingBailianSTT
 from sqlalchemy import select
 
 # 与固件 OPUS_SAMPLE_RATE / OPUS_FRAME_DURATION_MS 保持一致
@@ -28,8 +30,12 @@ async def handle_voice(ws: WebSocket, agent_id: str):
     await manager.send_json(ws, {"type": "welcome", "agent_id": str(agent_uuid)})
 
     is_recording = False
-    opus_chunks = []  # raw Opus bytes from device
+    opus_chunks = []  # raw Opus bytes from device（仅用于统计）
     pipeline_task: asyncio.Task | None = None  # 当前 pipeline 异步任务，用于打断
+    stt_session: StreamingBailianSTT | None = None  # 流式 STT 会话，失败时置 None 回退批式
+    decoder: Decoder | None = None  # 逐帧解码器（录音期间复用）
+    all_pcm = bytearray()  # 累积 PCM，用于声纹识别/批式 STT 兜底
+    frame_count = 0
 
     async def cancel_pipeline():
         """取消正在运行的 pipeline 任务"""
@@ -53,6 +59,25 @@ async def handle_voice(ws: WebSocket, agent_id: str):
             if "bytes" in raw and raw["bytes"] is not None:
                 if is_recording:
                     opus_chunks.append(raw["bytes"])
+                    # 逐帧解码 → 累积 PCM（声纹/批式兜底）+ 实时喂给流式 STT
+                    if decoder is not None:
+                        try:
+                            pcm = decoder.decode(raw["bytes"], OPUS_FRAME_SAMPLES)
+                        except Exception:
+                            pcm = b""
+                        if pcm:
+                            all_pcm.extend(pcm)
+                            frame_count += 1
+                            if stt_session is not None:
+                                try:
+                                    await stt_session.send_audio(pcm)
+                                except Exception as e:
+                                    print(f"[streaming-stt] send 失败，回退批式: {type(e).__name__}: {e}")
+                                    try:
+                                        await stt_session.close()
+                                    except Exception:
+                                        pass
+                                    stt_session = None
                 continue
 
             # ── Text frame: JSON control message ──
@@ -71,11 +96,36 @@ async def handle_voice(ws: WebSocket, agent_id: str):
                 await cancel_pipeline()
                 is_recording = True
                 opus_chunks.clear()
+                all_pcm.clear()
+                frame_count = 0
+                decoder = Decoder(OPUS_SAMPLE_RATE, OPUS_CHANNELS)
+
+                # 建立流式 STT 会话（连接失败自动回退批式识别）
+                stt_session = StreamingBailianSTT()
+                if stt_session.enabled:
+                    try:
+                        await stt_session.connect()
+                        print("[streaming-stt] 会话已连接，开始边收边识别")
+                    except Exception as e:
+                        print(f"[streaming-stt] 连接失败，回退批式: {type(e).__name__}: {e}")
+                        try:
+                            await stt_session.close()
+                        except Exception:
+                            pass
+                        stt_session = None
+                else:
+                    stt_session = None
                 await manager.send_json(ws, {"type": "status", "message": "recording"})
 
             elif msg_type == "abort":
-                # 打断：取消正在运行的 pipeline
+                # 打断：取消正在运行的 pipeline，并关闭流式 STT 会话
                 await cancel_pipeline()
+                if stt_session is not None:
+                    try:
+                        await stt_session.close()
+                    except Exception:
+                        pass
+                    stt_session = None
                 await manager.send_json(ws, {"type": "abort"})
 
             elif msg_type == "audio_end":
@@ -87,25 +137,33 @@ async def handle_voice(ws: WebSocket, agent_id: str):
                 # 先取消可能还在运行的旧 pipeline
                 await cancel_pipeline()
 
-                # Decode each Opus frame → PCM (each chunk is one 60ms frame)
-                decoder = Decoder(OPUS_SAMPLE_RATE, OPUS_CHANNELS)
-                pcm_parts = []
-                frame_count = len(opus_chunks)
-                for chunk in opus_chunks:
-                    try:
-                        decoded = decoder.decode(chunk, OPUS_FRAME_SAMPLES)
-                        pcm_parts.append(decoded)
-                    except Exception:
-                        pass
-                opus_chunks.clear()
-
-                audio_bytes = b"".join(pcm_parts)
+                # PCM 已在录音期间逐帧解码累积
+                audio_bytes = bytes(all_pcm)
                 total_ms = len(audio_bytes) // 2 * 1000 // OPUS_SAMPLE_RATE
                 print(f"[DEBUG] Opus decode: {frame_count} frames → {len(audio_bytes)} bytes PCM (~{total_ms}ms)")
+                opus_chunks.clear()
 
                 if not audio_bytes:
                     await manager.send_json(ws, {"type": "error", "message": "Opus decode failed"})
                     continue
+
+                # 流式 STT：发送 finish-task 拿最终文本（通常几百 ms），失败则回退批式
+                pre_text: str | None = None
+                if stt_session is not None:
+                    try:
+                        t0 = time.perf_counter()
+                        final = await stt_session.finalize(timeout=3.5)
+                        print(f"[streaming-stt] finalize 耗时 {(time.perf_counter() - t0) * 1000:.0f}ms → {final[:40]!r}")
+                        if final and not final.startswith("["):
+                            pre_text = final
+                    except Exception as e:
+                        print(f"[streaming-stt] finalize 失败，回退批式: {type(e).__name__}: {e}")
+                    finally:
+                        try:
+                            await stt_session.close()
+                        except Exception:
+                            pass
+                    stt_session = None
 
                 await manager.send_json(ws, {"type": "status", "message": "recognizing"})
 
@@ -130,6 +188,7 @@ async def handle_voice(ws: WebSocket, agent_id: str):
                         async for event in pipeline.speech_pipeline_stream(
                             db, audio_bytes, "pcm", agent_uuid, conn.conversation_id,
                             client_ip=real_ip, user_id=pipeline_user_id,
+                            pre_transcribed_text=pre_text,
                         ):
                             event_type = event["type"]
 
@@ -206,4 +265,10 @@ async def handle_voice(ws: WebSocket, agent_id: str):
     except Exception as e:
         print(f"[voice] error: {e}")
     finally:
+        if stt_session is not None:
+            try:
+                await stt_session.close()
+            except Exception:
+                pass
+            stt_session = None
         manager.disconnect(ws)
