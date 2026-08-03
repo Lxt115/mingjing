@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     deepseek_model: str = "deepseek-chat"  # V4-Flash，不开思考模式
 
     # ── 联网搜索 ──
+    # 百炼(qwen)原生联网搜索开关：enable_search=True 时模型自动判断是否需要联网
+    llm_enable_search: bool = True
     # 搜索服务商：metaso | tavily
     search_provider: str = "metaso"
     search_api_key: str = ""

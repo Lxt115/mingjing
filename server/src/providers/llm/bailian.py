@@ -39,6 +39,7 @@ class BailianLLMProvider(LLMProvider):
                     messages=full_messages,
                     result_format="message",
                     enable_thinking=False,
+                    enable_search=settings.llm_enable_search,
                 ),
             )
 
@@ -76,6 +77,7 @@ class BailianLLMProvider(LLMProvider):
                     stream=True,
                     incremental_output=True,
                     enable_thinking=False,
+                    enable_search=settings.llm_enable_search,
                 )
                 for resp in responses:
                     if stop_event.is_set():
