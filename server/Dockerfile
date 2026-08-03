@@ -1,5 +1,7 @@
 FROM python:3.12-slim
 
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
 # 系统依赖（pydub 需要 ffmpeg 做音频格式转换）
