@@ -147,6 +147,12 @@ async def handle_voice(ws: WebSocket, agent_id: str):
                     await manager.send_json(ws, {"type": "error", "message": "Opus decode failed"})
                     continue
 
+                if total_ms < 200:
+                    # 录音过短（误触/空录）：跳过 STT 与 pipeline，立即回到空闲，避免 EmptyAudio 空转数秒
+                    print(f"[voice] 录音过短 {total_ms}ms，忽略本次录音")
+                    await manager.send_json(ws, {"type": "status", "message": "no audio"})
+                    continue
+
                 # 流式 STT：发送 finish-task 拿最终文本（通常几百 ms），失败则回退批式
                 pre_text: str | None = None
                 if stt_session is not None:
