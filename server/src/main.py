@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from src.config import settings
 from src.database import engine
@@ -53,6 +54,9 @@ app.include_router(voiceprints.router)
 app.include_router(users.router)
 app.include_router(auth.router)
 app.include_router(pipeline.router)
+
+# 静态文件（固件下载等）
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @app.websocket("/ws/voice/{agent_id}")

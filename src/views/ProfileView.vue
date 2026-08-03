@@ -112,6 +112,25 @@ function navigateTo(path: string) {
             />
           </div>
 
+          <a
+            href="/static/mingjing_firmware.zip"
+            download
+            class="flex justify-between items-center px-[18px] py-3.5 border-b border-[var(--border)] cursor-pointer transition-colors duration-150 hover:bg-[var(--bg)] no-underline text-inherit"
+          >
+            <div class="flex items-center gap-3">
+              <div
+                class="w-[34px] h-[34px] rounded-[10px] flex items-center justify-center text-base shrink-0 bg-[#e8f0ff]"
+              >
+                💾
+              </div>
+              <div>
+                <div class="text-sm font-bold text-[var(--text1)]">固件初始化</div>
+                <div class="text-xs text-[var(--text3)] mt-px">下载烧录工具 · ESP32-C3</div>
+              </div>
+            </div>
+            <span class="text-[var(--text3)] text-base">›</span>
+          </a>
+
           <div
             class="flex justify-between items-center px-[18px] py-3.5 cursor-pointer transition-colors duration-150 hover:bg-[var(--bg)]"
             @click="ui.showToast('当前版本 v4.0.0')"
@@ -347,6 +366,24 @@ function navigateTo(path: string) {
             @update:model-value="user.toggleNotification"
           />
         </div>
+        <a
+          href="/static/mingjing_firmware.zip"
+          download
+          class="row-item flex items-center justify-between px-4 py-3.5 border-b border-[var(--border)] active:bg-[var(--bg)] no-underline text-inherit"
+        >
+          <div class="flex items-center gap-2.5">
+            <div
+              class="w-8 h-8 rounded-[10px] bg-[#e8f0ff] flex items-center justify-center text-[15px] shrink-0"
+            >
+              💾
+            </div>
+            <div>
+              <div class="text-sm font-bold text-[var(--text1)]">固件初始化</div>
+              <div class="text-xs text-[var(--text3)] mt-px">下载烧录工具 · ESP32-C3</div>
+            </div>
+          </div>
+          <span class="text-[var(--text3)] text-sm">›</span>
+        </a>
         <div
           class="row-item flex items-center justify-between px-4 py-3.5 cursor-pointer active:bg-[var(--bg)]"
           @click="ui.showToast('当前版本 v4.0.0')"
