@@ -37,4 +37,6 @@ def _to_response(v: Voice) -> VoiceResponse:
         gradient=v.gradient,
         category=v.category,
         provider_voice_name=v.provider_voice_name or "",
+        emoji="🎀" if v.gender == "female" else "🎤",
+        style=f"{v.character}系" if v.character else "自然",
     )

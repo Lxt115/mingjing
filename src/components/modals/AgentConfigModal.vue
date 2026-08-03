@@ -23,6 +23,51 @@ const knowledgeIds = ref<string[]>([])
 const deviceIds = ref<string[]>([])
 const saving = ref(false)
 
+/* ── 音色试听 ── */
+const audioEl = ref<HTMLAudioElement | null>(null)
+const previewLoading = ref(false)
+const previewPlaying = ref(false)
+
+function ensureAudio() {
+  if (audioEl.value) return
+  audioEl.value = new Audio()
+  audioEl.value.addEventListener('ended', () => {
+    previewPlaying.value = false
+    previewLoading.value = false
+  })
+  audioEl.value.addEventListener('error', () => {
+    previewPlaying.value = false
+    previewLoading.value = false
+    ui.showToast('试听失败，请稍后重试', 'error')
+  })
+  audioEl.value.addEventListener('playing', () => {
+    previewLoading.value = false
+  })
+}
+
+function playSelectedVoice() {
+  if (!voiceId.value) {
+    ui.showToast('请先选择音色')
+    return
+  }
+  if (previewPlaying.value) {
+    audioEl.value?.pause()
+    previewPlaying.value = false
+    return
+  }
+  if (previewLoading.value) return // 已有音色在合成，忽略重复点击
+  ensureAudio()
+  const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api'
+  // 加时间戳避免浏览器缓存旧的合成结果
+  audioEl.value!.src = `${baseUrl}/voices/${voiceId.value}/preview?_t=${Date.now()}`
+  previewLoading.value = true
+  audioEl.value!.load()
+  audioEl.value!.play().catch(() => {
+    previewLoading.value = false
+    ui.showToast('试听失败，请稍后重试', 'error')
+  })
+}
+
 const emojiList = [
   '😊',
   '😄',
@@ -353,10 +398,18 @@ initForm()
         </div>
 
         <div class="mb-[18px]">
-          <label
-            class="block text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase mb-2"
-            >音色选择</label
-          >
+          <div class="flex justify-between items-center mb-2">
+            <label class="text-xs font-extrabold text-[var(--text2)] tracking-[.5px] uppercase"
+              >音色选择</label
+            >
+            <button
+              class="text-xs font-extrabold text-[var(--indigo)] bg-[#eef0fc] px-3 py-1 rounded-full cursor-pointer border-none transition-all duration-200 hover:bg-[#dde1f8] disabled:opacity-50 disabled:cursor-not-allowed"
+              :disabled="!voiceId || previewLoading"
+              @click="playSelectedVoice"
+            >
+              {{ previewLoading ? '⏳ 合成中…' : previewPlaying ? '⏸ 停止' : '▶ 试听' }}
+            </button>
+          </div>
           <select
             v-model="voiceId"
             class="w-full p-[11px] border-[1.5px] border-[var(--border)] rounded-[var(--radius-sm)] text-sm text-[var(--text1)] bg-[var(--bg)] outline-none cursor-pointer transition-all duration-200 focus:border-[var(--coral)] focus:shadow-[0_0_0_3px_rgba(255,107,107,.1)] focus:bg-white"

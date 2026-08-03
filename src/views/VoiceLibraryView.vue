@@ -18,10 +18,28 @@ const tabs = [
 
 const audioEl = ref<HTMLAudioElement | null>(null)
 const playingId = ref<string | null>(null)
+const previewLoadingId = ref<string | null>(null)
 
 function selectVoice(voice: Voice) {
   voice.selected = !voice.selected
   ui.showToast(voice.selected ? `已选中 ${voice.name}` : `已取消 ${voice.name}`)
+}
+
+function ensureAudio() {
+  if (audioEl.value) return
+  audioEl.value = new Audio()
+  audioEl.value.addEventListener('ended', () => {
+    playingId.value = null
+    previewLoadingId.value = null
+  })
+  audioEl.value.addEventListener('error', () => {
+    playingId.value = null
+    previewLoadingId.value = null
+    ui.showToast('试听失败，请稍后重试', 'error')
+  })
+  audioEl.value.addEventListener('playing', () => {
+    previewLoadingId.value = null
+  })
 }
 
 function playPreview(voice: Voice) {
@@ -30,21 +48,18 @@ function playPreview(voice: Voice) {
     playingId.value = null
     return
   }
+  if (previewLoadingId.value) return // 已有音色在合成，忽略重复点击
+  ensureAudio()
   const baseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api'
-  const url = `${baseUrl}/voices/${voice.id}/preview`
-  if (!audioEl.value) {
-    audioEl.value = new Audio()
-    audioEl.value.addEventListener('ended', () => {
-      playingId.value = null
-    })
-    audioEl.value.addEventListener('error', () => {
-      playingId.value = null
-      ui.showToast('试听失败')
-    })
-  }
-  audioEl.value.src = url
-  audioEl.value.play().catch(() => ui.showToast('试听失败'))
-  playingId.value = voice.id
+  // 加时间戳避免浏览器缓存旧的合成结果
+  audioEl.value!.src = `${baseUrl}/voices/${voice.id}/preview?_t=${Date.now()}`
+  previewLoadingId.value = voice.id
+  playingId.value = null
+  audioEl.value!.load()
+  audioEl.value!.play().catch(() => {
+    previewLoadingId.value = null
+    ui.showToast('试听失败，请稍后重试', 'error')
+  })
 }
 
 function confirmSelection() {
@@ -137,7 +152,7 @@ onMounted(async () => {
             class="w-full h-9 rounded-lg bg-[var(--bg2)] text-[var(--text2)] border-none text-xs font-extrabold cursor-pointer transition-all duration-200 hover:bg-[var(--border)]"
             @click.stop="playPreview(voice)"
           >
-            {{ playingId === voice.id ? '⏸ 暂停' : '▶ 试听' }}
+            {{ previewLoadingId === voice.id ? '⏳ 合成中' : playingId === voice.id ? '⏸ 暂停' : '▶ 试听' }}
           </button>
         </div>
       </div>
@@ -227,7 +242,7 @@ onMounted(async () => {
               class="w-8 h-8 rounded-full bg-[var(--bg2)] border-none cursor-pointer flex items-center justify-center text-xs text-[var(--text2)] transition-all duration-200 active:scale-[.9]"
               @click.stop="playPreview(voice)"
             >
-              {{ playingId === voice.id ? '⏸' : '▶' }}
+              {{ previewLoadingId === voice.id ? '⏳' : playingId === voice.id ? '⏸' : '▶' }}
             </button>
             <div
               v-if="voice.selected"

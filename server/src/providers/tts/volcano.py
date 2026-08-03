@@ -1,4 +1,4 @@
-"""火山 TTS 提供商 —— 基于豆包语音合成模型 2.0 (seed-tts-2.0)。
+"""火山 TTS 提供商 —— 基于豆包语音合成 2.0 (seed-tts-2.0) 与大模型语音合成。
 
 - synthesize: 非流式，返回 MP3（用于试听）
 - synthesize_streaming: 流式，返回 PCM 16kHz（用于实时语音输出）
@@ -14,6 +14,19 @@ import httpx
 
 from src.config import settings
 from src.providers.tts.base import TTSProvider
+
+
+def pick_resource_id(voice_name: str) -> str:
+    """按音色引擎自动选择火山 TTS 资源 ID。
+
+    实测（音色 ID 的 *_bigtts 后缀前带引擎名）：
+    - uranus 音色 → seed-tts-2.0（豆包语音合成 2.0）
+    - mars / moon 音色 → volc.service_type.10029（大模型语音合成）
+    用错资源会报 55000000 "resource ID is mismatched with speaker related resource"。
+    """
+    if "uranus" in voice_name:
+        return "seed-tts-2.0"
+    return "volc.service_type.10029"
 
 
 class VolcanoTTSProvider(TTSProvider):
@@ -34,7 +47,7 @@ class VolcanoTTSProvider(TTSProvider):
         url = "https://openspeech.bytedance.com/api/v3/tts/unidirectional"
         headers = {
             "X-Api-Key": settings.volcano_api_key,
-            "X-Api-Resource-Id": "seed-tts-2.0",
+            "X-Api-Resource-Id": pick_resource_id(voice_name),
             "X-Api-Request-Id": reqid,
             "Content-Type": "application/json",
         }
@@ -89,7 +102,7 @@ class VolcanoTTSProvider(TTSProvider):
         url = "https://openspeech.bytedance.com/api/v3/tts/unidirectional"
         headers = {
             "X-Api-Key": settings.volcano_api_key,
-            "X-Api-Resource-Id": "seed-tts-2.0",
+            "X-Api-Resource-Id": pick_resource_id(voice_name),
             "X-Api-Request-Id": reqid,
             "Content-Type": "application/json",
         }

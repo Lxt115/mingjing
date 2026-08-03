@@ -73,7 +73,7 @@ export interface Voice {
   selected: boolean
   gradient: string
   emoji: string
-  style: GradientStyle
+  style: string
   category: 'female' | 'male' | 'english' | 'japanese' | 'korean' | 'cloned'
   providerVoiceName: string
 }

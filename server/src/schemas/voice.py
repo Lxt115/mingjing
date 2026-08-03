@@ -15,3 +15,5 @@ class VoiceResponse(CamelModel):
     gradient: str
     category: str
     provider_voice_name: str = ""
+    emoji: str = "🎤"
+    style: str = ""
