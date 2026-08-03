@@ -98,6 +98,13 @@ class VoiceprintProvider:
                         speaker_id = result.get("speaker_id")
                         score = float(result.get("score", 0))
 
+                        if score == 0:
+                            # 打印原始响应，区分"接口报错被吞"与"确实无匹配"
+                            print(
+                                f"[voiceprint] 原始响应: {result} "
+                                f"(speaker_ids={len(self.speaker_ids)}, 耗时={elapsed:.2f}s)"
+                            )
+
                         if score < self.similarity_threshold:
                             print(f"[voiceprint] 声纹相似度 {score:.3f} 低于阈值 {self.similarity_threshold}")
                             return None, score
