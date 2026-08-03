@@ -351,6 +351,7 @@ async def _stream_llm_answer_with_tts(
 
     async def llm_task():
         """后台驱动 LLM 流式 + 工具调用循环，把最终回答按句送入 TTS 队列。"""
+        nonlocal messages  # 避免循环内赋值把 messages 变成局部变量导致 UnboundLocalError
         full_text = ""
         search_depth = 0
         tool_depth = 0
